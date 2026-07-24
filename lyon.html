@@ -137,6 +137,11 @@
       <input type="range" id="yr" min="0" max="12" value="10" step="1">
       <label class="chk"><input type="checkbox" id="onlyNever">
         <span>Uniquement les biens <b>jamais vendus depuis 2014</b> (dormance maximale)</span></label>
+      <div id="filterNote" style="display:none;margin-top:10px;padding:9px 11px;border:1px solid rgba(245,158,11,.4);
+           background:rgba(245,158,11,.08);border-radius:8px;font-size:11.5px;line-height:1.55;color:#f8d386">
+        Données DVF indisponibles pour cette zone : le filtre de dormance est inactif.
+        La carte affiche le cadastre complet (parcelles en gris).
+      </div>
       <button class="btn primary" id="load" style="margin-top:12px">⟳ Charger les parcelles de la vue</button>
       <p class="muted" style="margin-top:8px">Zoomez sur un quartier puis chargez. Le cadastre se charge sur la zone visible.</p>
     </div>
@@ -205,12 +210,18 @@ function fatal(msg, detail){
   if(_fatalShown) return; _fatalShown = true;
   const d = document.createElement("div");
   d.style.cssText = "position:fixed;z-index:9999;left:50%;top:14px;transform:translateX(-50%);"
-    + "max-width:min(560px,92vw);background:#7f1d1d;color:#fff;padding:14px 18px;border-radius:10px;"
+    + "max-width:min(560px,92vw);background:#7f1d1d;color:#fff;padding:14px 40px 14px 18px;border-radius:10px;"
     + "font:13px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6)";
-  d.innerHTML = "<b>"+msg+"</b>" + (detail ? "<br><span style='opacity:.9;font-size:12px'>"+detail+"</span>" : "");
+  d.innerHTML = "<b>"+msg+"</b>" + (detail ? "<br><span style='opacity:.9;font-size:12px'>"+detail+"</span>" : "")
+    + "<span style='position:absolute;top:8px;right:12px;cursor:pointer;font-size:20px;line-height:1'>&times;</span>";
+  d.lastChild.onclick = ()=>{ d.remove(); _fatalShown=false; };
   (document.body||document.documentElement).appendChild(d);
 }
 window.addEventListener("error", function(e){
+  // "Script error." sans fichier ni ligne = erreur opaque venue d'un script
+  // tiers (extension, Shields Brave…). Ce n'est pas notre code : on l'ignore,
+  // sinon on alarme l'utilisateur pour quelque chose d'inactionnable.
+  if(!e.filename && !e.lineno) return;
   fatal("Erreur JavaScript", (e.message||"") + " — " + String(e.filename||"").split("/").pop() + ":" + (e.lineno||""));
 });
 
@@ -406,7 +417,8 @@ function dormancyYears(feat){
   return {never:false, years:(Date.now()-rec.last.getTime())/(365.25*864e5), rec};
 }
 function colorFor(feat){
-  if(dvfLoadedInsee===null && $("commune").value!=="69123") return "var(--c-unknown)";
+  // Couleurs littérales : Leaflet les applique au SVG, une var() CSS n'y est pas fiable.
+  if(!dvfLoadedInsee) return "#64748b";
   const d=dormancyYears(feat);
   if(d.years===null) return "#64748b";
   if(d.never) return "#7f1d1d";
@@ -416,11 +428,22 @@ function colorFor(feat){
   return "#22c55e";
 }
 function passesFilter(feat){
+  // Sans DVF, la dormance est inconnue : on affiche tout le cadastre plutôt que
+  // de masquer chaque parcelle (un filtre inapplicable ne doit pas vider la carte).
+  if(!dvfLoadedInsee) return true;
   const minYr=+$("yr").value, onlyNever=$("onlyNever").checked;
   const d=dormancyYears(feat);
   if(onlyNever) return d.never;
   if(d.years===null) return minYr===0;
   return d.years>=minYr || (d.never && minYr>=0);
+}
+// Grise les filtres de dormance quand DVF n'est pas disponible.
+function updateFilterAvailability(){
+  const ok = !!dvfLoadedInsee;
+  $("yr").disabled = !ok;
+  $("onlyNever").disabled = !ok;
+  const box = $("filterNote");
+  if(box) box.style.display = ok ? "none" : "block";
 }
 function featureStyle(feat){
   const show=passesFilter(feat);
@@ -437,7 +460,7 @@ function onFeature(feat,layer){
   const p=feat.properties||{};
   layer.bindTooltip((p.section||"")+" "+(p.numero||""), {sticky:true, opacity:.85});
 }
-function restyle(){ parcelLayer.setStyle(featureStyle); updateStats(); }
+function restyle(){ updateFilterAvailability(); parcelLayer.setStyle(featureStyle); updateStats(); }
 
 /* =========================================================================
    ORCHESTRATION
@@ -464,12 +487,19 @@ function updateStats(){
     if(d.never) never++; else if(d.years!==null && d.years>=8) old8++;
     if(passesFilter(f)) shown++;
   });
-  $("stats").innerHTML = total? `
+  if(!total){ $("stats").innerHTML=`<p class="muted">Aucune parcelle chargée.</p>`; return; }
+  if(!dvfLoadedInsee){
+    $("stats").innerHTML = `
+      <div class="stat" style="border:none"><span>Parcelles dans la vue</span><b>${total}</b></div>
+      <p class="muted" style="margin-top:8px">Dormance non évaluée : les données DVF ne sont pas
+      disponibles pour cette zone. Seul le cadastre est affiché.</p>`;
+    return;
+  }
+  $("stats").innerHTML = `
     <div class="stat"><span>Parcelles dans la vue</span><b>${total}</b></div>
     <div class="stat"><span>Jamais vendues (2014→)</span><b style="color:var(--c-never)">${never}</b></div>
     <div class="stat"><span>Sans vente ≥ 8 ans</span><b style="color:var(--c-old)">${old8}</b></div>
-    <div class="stat" style="border:none"><span>Affichées (filtre)</span><b style="color:var(--accent)">${shown}</b></div>`
-    : `<p class="muted">Aucune parcelle chargée.</p>`;
+    <div class="stat" style="border:none"><span>Affichées (filtre)</span><b style="color:var(--accent)">${shown}</b></div>`;
 }
 
 /* =========================================================================
