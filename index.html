@@ -1,1263 +1,657 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#000000">
-<title>SANDISK — CRYPTOCOMIKS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b0d12">
+<title>Euro numérique &amp; ChatControl — Le rapport sur la surveillance qui vient</title>
+<meta name="description" content="Rapport documenté sur l'euro numérique et le règlement ChatControl : ce qui est scanné, ce qui est stocké, par qui — et pourquoi l'Europe, déjà percée de brèches, ne peut pas garantir vos données.">
+<meta property="og:title" content="Euro numérique & ChatControl — le rapport">
+<meta property="og:description" content="Deux projets européens, une même trajectoire : la fin de la vie privée par défaut. Enquête sourcée + vérificateur de fuite d'identité.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Press+Start+2P&display=swap');
-
-/* ─── RESET & BASE ─── */
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-html {
-background: #000000;
--webkit-text-size-adjust: 100%;
-}
-
-body {
-background: #000000 !important;
-color: #e8ffe8;
-font-family: ‘Share Tech Mono’, monospace;
-min-height: 100vh;
-width: 100%;
-overflow-x: hidden;
--webkit-font-smoothing: antialiased;
-position: relative;
-}
-
-/* ─── VARS ─── */
-:root {
-–black:     #000000;
-–green:     #00ff41;
-–green-mid: #00cc33;
-–green-dim: #007a1e;
-–green-faint: #001f08;
-–amber:     #e8a000;
-–amber-dim: #7a4e00;
-–red:       #ff2828;
-–cyan:      #00ddff;
-–white:     #e8ffe8;
-–white-dim: #90b090;
-–border:    rgba(0,255,65,0.25);
-}
-
-/* ─── SCANLINES ─── */
-body::before {
-content: ‘’;
-position: fixed;
-inset: 0;
-background: repeating-linear-gradient(
-0deg,
-transparent 0px, transparent 2px,
-rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px
-);
-pointer-events: none;
-z-index: 900;
-}
-
-/* ─── MATRIX CANVAS ─── */
-#mx {
-position: fixed;
-inset: 0;
-pointer-events: none;
-z-index: 1;
-opacity: 0.12;
-}
-
-/* ─── LAYOUT ─── */
-.wrap {
-position: relative;
-z-index: 10;
-width: 100%;
-max-width: 680px;
-margin: 0 auto;
-padding: 16px 14px 60px;
-}
-
-/* ─── TICKER ─── */
-.ticker {
-background: var(–green);
-color: #000;
-padding: 5px 0;
-overflow: hidden;
-white-space: nowrap;
-font-family: ‘Press Start 2P’, monospace;
-font-size: 7px;
-margin-bottom: 20px;
-width: 100%;
-}
-.ticker-inner {
-display: inline-block;
-padding-left: 100%;
-animation: tick 30s linear infinite;
-}
-@keyframes tick { to { transform: translateX(-100%); } }
-
-/* ─── HEADER ─── */
-.header {
-border: 1px solid var(–border);
-padding: 22px 16px 18px;
-text-align: center;
-background: #000;
-margin-bottom: 20px;
-position: relative;
-}
-
-.header-corner {
-position: absolute;
-font-family: ‘Share Tech Mono’, monospace;
-font-size: 8px;
-color: var(–green-dim);
-line-height: 1;
-}
-.tl { top: 6px; left: 8px; }
-.tr { top: 6px; right: 8px; }
-.bl { bottom: 6px; left: 8px; }
-.br { bottom: 6px; right: 8px; }
-
-.h-title {
-font-family: ‘VT323’, monospace;
-font-size: clamp(48px, 14vw, 80px);
-color: var(–green);
-text-shadow: 0 0 20px rgba(0,255,65,0.5);
-letter-spacing: 4px;
-line-height: 1;
-animation: flicker 9s infinite;
-}
-
-@keyframes flicker {
-0%,93%,95%,100% { opacity:1; }
-94% { opacity:0.6; }
-}
-
-.h-sub {
-font-family: ‘VT323’, monospace;
-font-size: clamp(14px, 4vw, 20px);
-color: var(–amber);
-letter-spacing: 3px;
-margin-top: 4px;
-}
-
-.h-meta {
-display: flex;
-flex-wrap: wrap;
-justify-content: center;
-gap: 10px 16px;
-margin-top: 12px;
-font-size: 10px;
-color: var(–green-dim);
-}
-
-/* ─── 3D CARD ─── */
-.card-wrap {
-perspective: 700px;
-width: 100%;
-display: flex;
-justify-content: center;
-margin: 20px 0 24px;
-}
-
-.card {
-width: min(340px, 88vw);
-aspect-ratio: 1.586;
-position: relative;
-transform-style: preserve-3d;
-animation: spin 16s linear infinite;
-cursor: grab;
-}
-
-@keyframes spin {
-from { transform: rotateY(0deg) rotateX(3deg); }
-to   { transform: rotateY(360deg) rotateX(3deg); }
-}
-
-.card-f, .card-b {
-position: absolute;
-inset: 0;
-border-radius: 12px;
-backface-visibility: hidden;
-overflow: hidden;
-}
-
-.card-f {
-background: #000;
-border: 1px solid rgba(0,255,65,0.45);
-box-shadow:
-0 0 24px rgba(0,255,65,0.18),
-inset 0 0 20px rgba(0,255,65,0.03);
-display: flex;
-flex-direction: column;
-justify-content: space-between;
-padding: 16px 18px;
-}
-
-/* shimmer */
-.card-f::after {
-content: ‘’;
-position: absolute;
-inset: 0;
-background: linear-gradient(
-110deg,
-transparent 25%,
-rgba(0,255,65,0.05) 45%,
-rgba(0,238,255,0.04) 55%,
-transparent 75%
-);
-animation: shimmer 6s ease-in-out infinite;
-border-radius: 12px;
-}
-@keyframes shimmer {
-0%,100% { opacity:0.4; transform:translateX(-20%); }
-50%      { opacity:1;   transform:translateX(20%); }
-}
-
-/* grid overlay */
-.card-grid {
-position: absolute;
-inset: 0;
-background-image:
-linear-gradient(rgba(0,255,65,0.05) 1px, transparent 1px),
-linear-gradient(90deg, rgba(0,255,65,0.05) 1px, transparent 1px);
-background-size: 22px 22px;
-border-radius: 12px;
-pointer-events: none;
-}
-
-.card-logo {
-font-family: ‘VT323’, monospace;
-font-size: clamp(22px, 6vw, 32px);
-color: var(–green);
-text-shadow: 0 0 12px rgba(0,255,65,0.5);
-letter-spacing: 4px;
-position: relative;
-z-index: 2;
-}
-
-.card-chip {
-position: absolute;
-right: 16px; top: 50%;
-transform: translateY(-50%);
-width: 34px; height: 28px;
-background: linear-gradient(135deg, #a07820, #d4a830, #a07820);
-border-radius: 3px;
-z-index: 2;
-box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-}
-.card-chip::before {
-content: ‘’;
-position: absolute;
-inset: 4px;
-background: repeating-linear-gradient(
-0deg, #7a5a10 0px, #7a5a10 2px, #c09020 2px, #c09020 4px
-);
-border-radius: 1px;
-}
-
-.card-ticker {
-font-family: ‘Press Start 2P’, monospace;
-font-size: clamp(5px, 1.2vw, 7px);
-color: var(–amber);
-letter-spacing: 2px;
-position: relative;
-z-index: 2;
-margin-top: 2px;
-}
-
-.card-price {
-font-family: ‘VT323’, monospace;
-font-size: clamp(28px, 8vw, 40px);
-color: var(–green);
-text-shadow: 0 0 10px rgba(0,255,65,0.4);
-line-height: 1;
-position: relative;
-z-index: 2;
-}
-
-.card-delta {
-display: inline-block;
-font-family: ‘VT323’, monospace;
-font-size: clamp(16px, 4vw, 22px);
-color: var(–green);
-border: 1px solid var(–green);
-padding: 1px 8px;
-margin-left: 8px;
-position: relative;
-z-index: 2;
-}
-
-.card-bottom {
-display: flex;
-justify-content: space-between;
-align-items: flex-end;
-position: relative;
-z-index: 2;
-}
-
-.card-cap-label {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-color: rgba(0,255,65,0.35);
-margin-bottom: 3px;
-}
-
-.card-cap {
-font-family: ‘VT323’, monospace;
-font-size: clamp(14px, 4vw, 20px);
-color: var(–amber);
-}
-
-.card-idx {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-color: rgba(0,255,65,0.3);
-text-align: right;
-line-height: 1.8;
-}
-
-/* back of card */
-.card-b {
-background: #000;
-border: 1px solid rgba(0,255,65,0.3);
-transform: rotateY(180deg);
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-gap: 8px;
-padding: 16px;
-}
-
-.card-b-stripe {
-width: 100%;
-height: 10px;
-background: #111;
-}
-
-.card-b-text {
-font-family: ‘VT323’, monospace;
-font-size: clamp(18px, 5vw, 24px);
-color: var(–green-dim);
-letter-spacing: 4px;
-}
-
-.card-b-code {
-font-family: ‘Share Tech Mono’, monospace;
-font-size: clamp(9px, 2.5vw, 11px);
-color: rgba(0,255,65,0.3);
-text-align: center;
-line-height: 1.8;
-}
-
-/* ─── WINDOW BLOCKS ─── */
-.win {
-border: 1px solid var(–border);
-background: #000;
-margin-bottom: 18px;
-width: 100%;
-}
-
-.win-bar {
-background: rgba(0,255,65,0.08);
-border-bottom: 1px solid var(–border);
-padding: 5px 10px;
-display: flex;
-justify-content: space-between;
-align-items: center;
-}
-
-.win-bar-title {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 6px;
-color: var(–green);
-line-height: 1.6;
-}
-
-.win-btns {
-display: flex;
-gap: 4px;
-flex-shrink: 0;
-}
-
-.win-btn {
-width: 10px; height: 10px;
-border: 1px solid var(–green-dim);
-font-size: 6px;
-color: var(–green-dim);
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.win-body { padding: 16px; }
-
-/* ─── SECTION TITLE ─── */
-.stitle {
-font-family: ‘VT323’, monospace;
-font-size: clamp(20px, 5.5vw, 26px);
-color: var(–amber);
-border-bottom: 1px solid rgba(232,160,0,0.25);
-padding-bottom: 5px;
-margin-bottom: 14px;
-display: flex;
-align-items: center;
-gap: 8px;
-}
-.stitle::before { content: ‘▶’; color: var(–green); font-size: 14px; }
-
-/* ─── PRICE GRID ─── */
-.pgrid {
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 8px;
-margin-bottom: 14px;
-}
-
-@media (min-width: 400px) {
-.pgrid { grid-template-columns: repeat(3, 1fr); }
-}
-
-.pcell {
-border: 1px solid rgba(0,255,65,0.18);
-padding: 10px 8px;
-text-align: center;
-background: rgba(0,255,65,0.02);
-}
-
-.plabel {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-color: var(–green-dim);
-display: block;
-margin-bottom: 6px;
-line-height: 1.6;
-}
-
-.pval {
-font-family: ‘VT323’, monospace;
-font-size: clamp(22px, 6vw, 28px);
-line-height: 1;
-}
-
-.amber { color: var(–amber); }
-.green { color: var(–green); }
-.red   { color: var(–red); }
-.cyan  { color: var(–cyan); }
-
-/* ─── TABLE ─── */
-.tbl {
-width: 100%;
-border-collapse: collapse;
-margin: 12px 0;
-font-size: 11px;
-}
-
-.tbl th {
-background: rgba(0,255,65,0.07);
-color: var(–green);
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-padding: 6px 8px;
-border: 1px solid rgba(0,255,65,0.12);
-text-align: left;
-line-height: 1.7;
-}
-
-.tbl td {
-padding: 6px 8px;
-border: 1px solid rgba(0,255,65,0.07);
-color: var(–white-dim);
-font-size: 11px;
-vertical-align: top;
-line-height: 1.5;
-}
-
-.up   { color: var(–green) !important; }
-.down { color: var(–red) !important; }
-.neut { color: var(–amber) !important; }
-
-/* ─── STAT BARS ─── */
-.srow {
-display: flex;
-align-items: center;
-gap: 8px;
-margin-bottom: 9px;
-}
-
-.slabel {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-color: var(–green-dim);
-width: 100px;
-flex-shrink: 0;
-line-height: 1.6;
-}
-
-.sbar {
-flex: 1;
-height: 8px;
-background: rgba(0,255,65,0.07);
-border: 1px solid rgba(0,255,65,0.15);
-overflow: hidden;
-}
-
-.sfill {
-height: 100%;
-background: var(–green);
-box-shadow: 0 0 5px rgba(0,255,65,0.5);
-animation: bload 2.5s ease both;
-}
-@keyframes bload { from { width: 0 !important; } }
-
-.sfill.a { background: var(–amber); box-shadow: 0 0 5px rgba(232,160,0,0.5); }
-.sfill.c { background: var(–cyan);  box-shadow: 0 0 5px rgba(0,221,255,0.5); }
-.sfill.d { background: var(–green-dim); box-shadow: none; }
-
-.sval {
-font-family: ‘VT323’, monospace;
-font-size: 16px;
-color: var(–amber);
-width: 48px;
-text-align: right;
-flex-shrink: 0;
-}
-
-/* ─── RISK CARDS ─── */
-.rgrid {
-display: grid;
-grid-template-columns: 1fr;
-gap: 10px;
-margin: 12px 0;
-}
-
-@media (min-width: 500px) {
-.rgrid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.rc {
-border: 1px solid;
-padding: 12px;
-background: #000;
-}
-
-.rc.rh { border-color: rgba(255,40,40,0.4); }
-.rc.rm { border-color: rgba(232,160,0,0.4); }
-.rc.rl { border-color: rgba(0,255,65,0.3); }
-
-.rc-title {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-margin-bottom: 8px;
-line-height: 1.8;
-}
-
-.rc.rh .rc-title { color: var(–red); }
-.rc.rm .rc-title { color: var(–amber); }
-.rc.rl .rc-title { color: var(–green); }
-
-.rc-desc {
-font-size: 11px;
-color: var(–white-dim);
-line-height: 1.65;
-}
-
-/* ─── SCENARIOS ─── */
-.sc {
-border-left: 3px solid;
-padding: 12px 14px;
-margin-bottom: 12px;
-background: rgba(0,0,0,0.6);
-}
-.sc.bull { border-color: var(–green); }
-.sc.base { border-color: var(–amber); }
-.sc.bear { border-color: var(–red); }
-
-.sc-tag {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 6px;
-margin-bottom: 9px;
-line-height: 1.8;
-}
-.sc.bull .sc-tag { color: var(–green); }
-.sc.base .sc-tag { color: var(–amber); }
-.sc.bear .sc-tag { color: var(–red); }
-
-/* ─── TEXT ─── */
-p {
-font-size: 12px;
-line-height: 1.8;
-color: var(–white-dim);
-margin-bottom: 10px;
-}
-
-ul { padding-left: 18px; margin: 10px 0; }
-li {
-font-size: 12px;
-line-height: 1.8;
-color: var(–white-dim);
-margin-bottom: 5px;
-}
-li::marker { color: var(–green); }
-
-.hl   { color: var(–amber); }
-.hlg  { color: var(–green); }
-.hlr  { color: var(–red); }
-.hlc  { color: var(–cyan); }
-
-code {
-background: rgba(0,255,65,0.07);
-border: 1px solid rgba(0,255,65,0.18);
-padding: 1px 5px;
-color: var(–cyan);
-font-size: 11px;
-}
-
-.qtbox {
-border: 1px dashed rgba(0,255,65,0.2);
-padding: 12px 16px 10px;
-margin: 12px 0;
-position: relative;
-color: #90c890;
-font-size: 12px;
-line-height: 1.7;
-}
-
-.qtbox::before {
-content: ‘”’;
-font-family: ‘VT323’, monospace;
-font-size: 44px;
-color: rgba(0,255,65,0.15);
-position: absolute;
-top: -8px; left: 8px;
-line-height: 1;
-}
-
-.qtsrc {
-font-size: 10px;
-color: var(–green-dim);
-text-align: right;
-margin-top: 6px;
-}
-
-.divider {
-text-align: center;
-color: rgba(0,255,65,0.2);
-font-size: 10px;
-letter-spacing: 2px;
-margin: 14px 0;
-}
-
-.tag {
-display: inline-block;
-border: 1px solid;
-font-family: ‘Press Start 2P’, monospace;
-font-size: 5px;
-padding: 2px 5px;
-margin: 1px;
-vertical-align: middle;
-}
-.tag-g { color:var(–green); border-color:rgba(0,255,65,0.35); }
-.tag-a { color:var(–amber); border-color:rgba(232,160,0,0.35); }
-.tag-r { color:var(–red);   border-color:rgba(255,40,40,0.35); }
-
-.loader {
-width: 100%;
-height: 2px;
-background: rgba(0,255,65,0.07);
-overflow: hidden;
-margin: 12px 0;
-}
-.loader-fill {
-height: 100%;
-background: linear-gradient(90deg, transparent, var(–green), transparent);
-width: 40%;
-animation: ldr 2s linear infinite;
-}
-@keyframes ldr { 0%{margin-left:-40%} 100%{margin-left:140%} }
-
-.blink { animation: blk 1s step-end infinite; }
-@keyframes blk { 50%{opacity:0} }
-
-.flavor {
-text-align: center;
-font-family: ‘VT323’, monospace;
-font-size: 14px;
-color: rgba(0,255,65,0.22);
-font-style: italic;
-margin: 6px 0 12px;
-}
-
-/* ─── CTA ─── */
-.cta {
-border: 2px solid var(–amber);
-padding: 26px 18px;
-text-align: center;
-background: #000;
-position: relative;
-overflow: hidden;
-animation: ctap 4s ease-in-out infinite;
-margin-bottom: 24px;
-}
-@keyframes ctap {
-0%,100% { box-shadow: 0 0 20px rgba(232,160,0,0.08); }
-50%      { box-shadow: 0 0 40px rgba(232,160,0,0.2); }
-}
-
-.cta-title {
-font-family: ‘VT323’, monospace;
-font-size: clamp(28px, 8vw, 42px);
-color: var(–amber);
-text-shadow: 0 0 16px rgba(232,160,0,0.4);
-margin-bottom: 8px;
-}
-
-.cta-sub {
-font-family: ‘Press Start 2P’, monospace;
-font-size: 7px;
-color: var(–green);
-margin-bottom: 14px;
-line-height: 2;
-}
-
-.cta-body {
-font-size: 12px;
-color: var(–white-dim);
-line-height: 1.8;
-margin-bottom: 20px;
-}
-
-.cta-btn {
-display: inline-block;
-background: var(–amber);
-color: #000;
-font-family: ‘Press Start 2P’, monospace;
-font-size: 8px;
-padding: 14px 22px;
-text-decoration: none;
-box-shadow: 4px 4px 0 #5a3d00;
-letter-spacing: 1px;
-cursor: pointer;
-}
-
-.cta-note {
-font-size: 9px;
-color: rgba(232,160,0,0.35);
-margin-top: 12px;
-}
-
-/* ─── FOOTER ─── */
-.footer {
-border-top: 1px solid rgba(0,255,65,0.12);
-padding: 18px 0;
-text-align: center;
-}
-.footer p {
-font-size: 9px;
-color: rgba(0,255,65,0.3);
-line-height: 1.8;
-}
-
-/* ─── ASCII ─── */
-.ascii {
-font-family: ‘Share Tech Mono’, monospace;
-font-size: 9px;
-line-height: 1.2;
-color: rgba(0,255,65,0.2);
-text-align: center;
-white-space: pre;
-overflow-x: auto;
-margin: 14px 0;
-}
+:root{
+  --plane:#0b0d12;
+  --surface:#12151d;
+  --surface-2:#171b25;
+  --ink:#f4f6fb;
+  --ink-2:#aeb6c6;
+  --ink-3:#6f7789;
+  --line:rgba(255,255,255,0.08);
+  --line-2:rgba(255,255,255,0.14);
+  --blue:#3987e5;      /* euro numérique / UE */
+  --blue-soft:#8fbcf3;
+  --red:#e5514f;       /* danger / surveillance */
+  --red-soft:#f08e8c;
+  --amber:#f2b03b;     /* alerte */
+  --green:#28c07a;     /* rassurant */
+  --violet:#9085e9;
+  --maxw:1120px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--plane);
+  color:var(--ink);
+  font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  line-height:1.6;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-2;
+  background:
+    radial-gradient(900px 600px at 12% -8%, rgba(57,135,229,0.16), transparent 60%),
+    radial-gradient(800px 620px at 92% 4%, rgba(229,81,79,0.13), transparent 62%),
+    radial-gradient(1000px 800px at 50% 120%, rgba(144,133,233,0.10), transparent 60%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(circle at 50% 30%,#000,transparent 78%);
+          mask-image:radial-gradient(circle at 50% 30%,#000,transparent 78%);
+}
+a{color:inherit}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+h1,h2,h3,.mono-h{font-family:"Space Grotesk",sans-serif;letter-spacing:-.01em}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:rgba(11,13,18,.72);border-bottom:1px solid var(--line)}
+.nav-in{max-width:var(--maxw);margin:0 auto;padding:13px 22px;display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Space Grotesk";font-weight:700;font-size:15px}
+.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(229,81,79,.18);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-links{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.nav-links a{font-size:13px;color:var(--ink-2);text-decoration:none;padding:7px 11px;border-radius:8px;transition:.15s}
+.nav-links a:hover{color:var(--ink);background:var(--surface-2)}
+.nav-cta{color:var(--ink)!important;background:linear-gradient(135deg,var(--red),#b8302e);font-weight:600}
+@media(max-width:760px){.nav-links a:not(.nav-cta){display:none}}
+
+/* HERO */
+header.hero{position:relative;padding:88px 0 60px;text-align:center}
+.kicker{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--red-soft);border:1px solid rgba(229,81,79,.35);background:rgba(229,81,79,.08);
+  padding:7px 15px;border-radius:100px;font-weight:600}
+h1{font-size:clamp(2.3rem,6vw,4.5rem);line-height:1.02;font-weight:700;margin:26px auto 0;max-width:14ch}
+h1 .g{background:linear-gradient(120deg,var(--blue-soft),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+h1 .r{background:linear-gradient(120deg,var(--red-soft),var(--red));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{max-width:64ch;margin:26px auto 0;font-size:clamp(1rem,2vw,1.22rem);color:var(--ink-2)}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:12px;font-weight:600;
+  font-size:15px;text-decoration:none;border:1px solid transparent;transition:.18s;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,var(--red),#b8302e);color:#fff}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(229,81,79,.28)}
+.btn-ghost{border-color:var(--line-2);color:var(--ink);background:var(--surface)}
+.btn-ghost:hover{background:var(--surface-2);border-color:var(--blue)}
+.scroll-note{margin-top:44px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+
+/* COUNTER */
+.counter-band{border-block:1px solid var(--line);background:linear-gradient(180deg,rgba(229,81,79,.06),transparent);margin-top:34px}
+.counter-in{padding:46px 22px;text-align:center;max-width:var(--maxw);margin:0 auto}
+.counter-label{font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red-soft);font-weight:600}
+.counter-num{font-family:"Space Grotesk";font-weight:700;font-variant-numeric:tabular-nums;
+  font-size:clamp(2.6rem,9vw,5.6rem);line-height:1;margin:14px 0 8px;letter-spacing:-.02em;
+  text-shadow:0 0 42px rgba(229,81,79,.35)}
+.counter-sub{color:var(--ink-2);font-size:14.5px;max-width:60ch;margin:6px auto 0}
+.counter-model{margin-top:14px;font-size:12px;color:var(--ink-3)}
+.counter-model code{color:var(--blue-soft);background:var(--surface-2);padding:2px 7px;border-radius:6px;font-family:"JetBrains Mono"}
+
+/* SECTIONS */
+section{padding:74px 0;position:relative}
+.sec-tag{font-family:"JetBrains Mono";font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-soft);font-weight:500}
+.sec-tag.red{color:var(--red-soft)}
+.sec-tag.amber{color:var(--amber)}
+h2{font-size:clamp(1.8rem,4vw,2.9rem);line-height:1.08;margin:14px 0 0;font-weight:700;max-width:20ch}
+.lede{color:var(--ink-2);font-size:clamp(1.02rem,1.6vw,1.16rem);max-width:66ch;margin-top:18px}
+.divider{height:1px;background:var(--line);max-width:var(--maxw);margin:0 auto}
+
+/* CARDS */
+.grid{display:grid;gap:18px;margin-top:40px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px;transition:.2s}
+.card:hover{border-color:var(--line-2);transform:translateY(-3px);background:var(--surface-2)}
+.card .ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:22px;margin-bottom:16px;
+  background:rgba(57,135,229,.12);border:1px solid rgba(57,135,229,.25)}
+.card.red .ic{background:rgba(229,81,79,.12);border-color:rgba(229,81,79,.28)}
+.card.amber .ic{background:rgba(242,176,59,.12);border-color:rgba(242,176,59,.28)}
+.card h3{font-size:1.18rem;margin-bottom:8px}
+.card p{color:var(--ink-2);font-size:14.5px}
+
+/* FLOW / who stores what */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:14px;align-items:stretch;margin-top:40px}
+@media(max-width:860px){.flow{grid-template-columns:1fr;gap:10px}.flow .arrow{transform:rotate(90deg);justify-self:center}}
+.node{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;text-align:center}
+.node .t{font-family:"Space Grotesk";font-weight:600;font-size:15px;margin-bottom:6px}
+.node .d{font-size:12.5px;color:var(--ink-3)}
+.node.scan{border-color:rgba(229,81,79,.4);box-shadow:0 0 0 1px rgba(229,81,79,.15) inset}
+.node.store{border-color:rgba(242,176,59,.4)}
+.arrow{display:grid;place-items:center;color:var(--ink-3);font-size:22px}
+
+/* STAT TILES */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+@media(max-width:860px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.tile .v{font-family:"Space Grotesk";font-weight:700;font-size:2.1rem;line-height:1;font-variant-numeric:tabular-nums}
+.tile .v.red{color:var(--red-soft)}.tile .v.blue{color:var(--blue-soft)}.tile .v.amber{color:var(--amber)}
+.tile .k{font-size:13px;color:var(--ink-2);margin-top:9px}
+.tile .src{font-size:11px;color:var(--ink-3);margin-top:8px;font-family:"JetBrains Mono"}
+
+/* CHART */
+.chart-wrap{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px;margin-top:40px}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.chart-head h3{font-size:1.15rem}
+.chart-head .note{font-size:12px;color:var(--ink-3);font-family:"JetBrains Mono"}
+.bar-row{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.bar-row:first-of-type{border-top:none}
+@media(max-width:680px){.bar-row{grid-template-columns:1fr;gap:6px}}
+.bar-label{font-size:13.5px}
+.bar-label .yr{color:var(--ink-3);font-family:"JetBrains Mono";font-size:11.5px;display:block}
+.bar-track{position:relative;height:34px;background:var(--surface-2);border-radius:8px;overflow:hidden}
+.bar-fill{position:absolute;inset:0 auto 0 0;border-radius:8px;width:0;
+  background:linear-gradient(90deg,rgba(229,81,79,.55),var(--red));transition:width 1.3s cubic-bezier(.22,1,.36,1);
+  display:flex;align-items:center;justify-content:flex-end;padding-right:11px}
+.bar-fill .val{font-family:"JetBrains Mono";font-weight:700;font-size:13px;color:#fff;white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);opacity:0;transition:opacity .4s .9s}
+.bar-fill.on .val{opacity:1}
+.bar-fill.short{justify-content:flex-start;padding-right:0}
+.bar-fill.short .val{color:var(--red-soft);text-shadow:none;
+  position:absolute;left:100%;margin-left:10px;top:50%;transform:translateY(-50%)}
+
+/* CHECKER */
+#verifier{scroll-margin-top:70px}
+.checker{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--line-2);
+  border-radius:20px;padding:34px;margin-top:40px;position:relative;overflow:hidden}
+.checker::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(600px 300px at 100% 0,rgba(57,135,229,.14),transparent 60%)}
+.checker h3{font-size:1.4rem;position:relative}
+.checker .desc{color:var(--ink-2);font-size:14.5px;max-width:60ch;margin:8px 0 22px;position:relative}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;position:relative}
+@media(max-width:620px){.form-row{grid-template-columns:1fr}}
+.field label{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:6px;font-weight:500}
+.field input{width:100%;padding:13px 15px;border-radius:11px;border:1px solid var(--line-2);
+  background:var(--plane);color:var(--ink);font-size:15px;font-family:inherit;transition:.15s}
+.field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(57,135,229,.2)}
+.field.full{grid-column:1/-1}
+.check-btn{margin-top:18px;width:100%;justify-content:center;position:relative}
+.check-btn[disabled]{opacity:.6;cursor:not-allowed}
+.result{margin-top:22px;border-radius:14px;padding:22px;display:none;position:relative;animation:rise .4s ease}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.result.show{display:block}
+.result.safe{background:rgba(40,192,122,.09);border:1px solid rgba(40,192,122,.4)}
+.result.leak{background:rgba(229,81,79,.09);border:1px solid rgba(229,81,79,.45)}
+.result.err{background:rgba(242,176,59,.08);border:1px solid rgba(242,176,59,.4)}
+.result .rt{font-family:"Space Grotesk";font-weight:700;font-size:1.25rem;display:flex;align-items:center;gap:10px}
+.result.safe .rt{color:var(--green)}.result.leak .rt{color:var(--red-soft)}.result.err .rt{color:var(--amber)}
+.result p{color:var(--ink-2);font-size:14px;margin-top:10px}
+.breach-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.breach-chip{font-family:"JetBrains Mono";font-size:12px;background:rgba(229,81,79,.14);
+  border:1px solid rgba(229,81,79,.35);color:var(--red-soft);padding:5px 11px;border-radius:100px}
+.spinner{width:17px;height:17px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;
+  display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.disclaimer{font-size:11.5px;color:var(--ink-3);margin-top:16px;position:relative;line-height:1.5}
+.disclaimer a{color:var(--blue-soft)}
+
+/* QUOTE */
+.quote{border-left:3px solid var(--red);padding:6px 0 6px 24px;margin-top:40px;max-width:70ch}
+.quote p{font-family:"Space Grotesk";font-size:clamp(1.15rem,2.4vw,1.55rem);font-weight:500;line-height:1.35}
+.quote cite{display:block;margin-top:14px;font-style:normal;font-size:13.5px;color:var(--ink-3)}
+
+/* PROTECT list */
+.steps{margin-top:36px;display:grid;gap:14px}
+.step{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.step .n{font-family:"Space Grotesk";font-weight:700;font-size:1.3rem;color:var(--blue-soft);
+  width:40px;height:40px;border-radius:10px;background:rgba(57,135,229,.1);display:grid;place-items:center}
+.step h3{font-size:1.05rem;margin-bottom:4px}
+.step p{color:var(--ink-2);font-size:14px}
+.step a{color:var(--blue-soft)}
+
+/* SOURCES */
+.sources{columns:2;column-gap:34px;margin-top:34px}
+@media(max-width:760px){.sources{columns:1}}
+.sources li{break-inside:avoid;margin-bottom:12px;font-size:13px;color:var(--ink-2);list-style:none;
+  padding-left:20px;position:relative}
+.sources li::before{content:"→";position:absolute;left:0;color:var(--blue-soft)}
+.sources a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-2)}
+.sources a:hover{color:var(--blue-soft)}
+
+/* FOOTER */
+footer{border-top:1px solid var(--line);padding:48px 0 60px;margin-top:40px}
+.foot-in{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+.foot-in p{font-size:13px;color:var(--ink-3);max-width:56ch}
+.badge{display:inline-block;font-family:"JetBrains Mono";font-size:11px;color:var(--ink-3);
+  border:1px solid var(--line);padding:4px 10px;border-radius:100px;margin-top:8px}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s,transform .7s}
+.reveal.in{opacity:1;transform:none}
 </style>
-
 </head>
 <body>
 
-<canvas id="mx"></canvas>
-
-<div class="wrap">
-
-  <!-- TICKER -->
-
-  <div class="ticker">
-    <div class="ticker-inner">
-      &nbsp;&nbsp;★ SNDK $906 ▲+2500% YTD &nbsp;|&nbsp; NASDAQ-100 : 20 AVRIL 2026 &nbsp;|&nbsp; Q3 EARNINGS : 30 AVRIL &nbsp;|&nbsp; CAP $131B &nbsp;|&nbsp; BERNSTEIN $1,250 &nbsp;|&nbsp; EVERCORE $1,200 &nbsp;|&nbsp; PÉNURIE NAND JUSQU'EN 2028 &nbsp;|&nbsp; KIOXIA 2034 &nbsp;|&nbsp; ★ ACTION GRATUITE — VOIR FIN DE PAGE ★&nbsp;&nbsp;
+<nav>
+  <div class="nav-in">
+    <div class="brand"><span class="dot"></span> SURVEILLANCE&nbsp;2026</div>
+    <div class="nav-links">
+      <a href="#chatcontrol">ChatControl</a>
+      <a href="#euro">Euro numérique</a>
+      <a href="#convergence">La convergence</a>
+      <a href="#breches">Les brèches</a>
+      <a href="#verifier" class="nav-cta">Suis-je fuité ?</a>
     </div>
   </div>
+</nav>
 
-  <!-- HEADER -->
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker"><span class="dot" style="width:8px;height:8px;box-shadow:none"></span> Rapport documenté · Sources publiques · 2026</span>
+    <h1>Vos <span class="r">messages</span> et votre <span class="g">argent</span>, lus par défaut.</h1>
+    <p class="sub">Deux projets européens avancent en parallèle : <strong>ChatControl</strong>, qui veut faire analyser vos conversations privées, et <strong>l'euro numérique</strong>, une monnaie programmable et traçable. Séparément, ils inquiètent. Ensemble, ils dessinent une surveillance de la communication <em>et</em> de la finance. Voici ce qui est scanné, ce qui est stocké, par qui — et pourquoi l'Europe, déjà percée de brèches, ne peut rien vous garantir.</p>
+    <div class="hero-btns">
+      <a href="#verifier" class="btn btn-primary">🔍 Mon identité a-t-elle déjà fuité ?</a>
+      <a href="#chatcontrol" class="btn btn-ghost">Lire le rapport</a>
+    </div>
+    <div class="scroll-note">↓ défilez pour comprendre</div>
+  </div>
+</header>
 
-  <div class="header">
-    <span class="header-corner tl">SYS://SNDK</span>
-    <span class="header-corner tr">16.04.2026</span>
-    <span class="header-corner bl">CRYPTOCOMIKS</span>
-    <span class="header-corner br">v2.6</span>
-    <div class="h-title">SANDISK</div>
-    <div class="h-sub">ANALYSE COMPLÈTE — CRYPTOCOMIKS</div>
-    <div class="h-meta">
-      <span>TICKER : <code>SNDK</code></span>
-      <span>NASDAQ</span>
-      <span><span class="blink">■</span> LIVE</span>
+<!-- LIVE COUNTER -->
+<div class="counter-band">
+  <div class="counter-in">
+    <div class="counter-label">● Estimation en direct — enregistrements de citoyens exposés en Europe</div>
+    <div class="counter-num mono" id="counter">0</div>
+    <p class="counter-sub">Chaque seconde qui passe, des données personnelles européennes se retrouvent dans la nature. Ce compteur modélise le rythme moyen observé — et il ne s'arrête jamais.</p>
+    <p class="counter-model">Modèle : <code>145 000 000</code> enregistrements exposés sur 2024–2025 (source CNIL / recensements publics) répartis linéairement depuis le 1ᵉʳ&nbsp;janvier 2024 → ≈&nbsp;2,3&nbsp;enregistrements/seconde. Estimation illustrative, pas un capteur temps réel.</p>
+  </div>
+</div>
+
+<!-- CHATCONTROL -->
+<section id="chatcontrol">
+  <div class="wrap">
+    <span class="sec-tag red">01 — Le règlement CSAR</span>
+    <h2>ChatControl : la fouille de vos messages, avant même le chiffrement</h2>
+    <p class="lede">Officiellement, c'est le « règlement pour prévenir et combattre les abus sexuels sur enfants » (CSAR). Une cause juste, un mécanisme dangereux : obliger messageries, e-mails et clouds à <strong>analyser tout le contenu privé</strong> à la recherche de matériel suspect. La technique clé s'appelle le <em>client-side scanning</em> — votre téléphone inspecte le message <strong>avant</strong> qu'il ne soit chiffré. Le cadenas reste fermé, mais on a lu par-dessus votre épaule à l'instant précis où vous écriviez.</p>
+
+    <div class="grid g3">
+      <div class="card red reveal">
+        <div class="ic">👁️</div>
+        <h3>Scan généralisé</h3>
+        <p>Le principe est le contrôle <em>sans soupçon</em> : tout le monde est analysé en permanence, pas seulement des suspects visés par un juge. C'est l'inversion de la présomption d'innocence appliquée à la conversation privée.</p>
+      </div>
+      <div class="card red reveal">
+        <div class="ic">🔓</div>
+        <h3>Le chiffrement contourné</h3>
+        <p>Le chiffrement de bout en bout protège le transport. Le client-side scanning le vide de sens en lisant le message sur l'appareil. Signal a prévenu : rendue obligatoire, cette obligation la ferait <strong>quitter le marché européen</strong>.</p>
+      </div>
+      <div class="card red reveal">
+        <div class="ic">⚖️</div>
+        <h3>Le « volontaire » qui n'en est pas un</h3>
+        <p>La révision de décembre 2025 abandonne l'ordre de détection obligatoire… pour le remplacer par un scan « volontaire » assorti d'obligations de « réduction des risques ». Des juristes y voient un <strong>mandat déguisé</strong> : ne pas scanner devient un risque juridique.</p>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>« La surveillance de masse des conversations, sans soupçon, viole les principes fondamentaux d'une démocratie constitutionnelle. »</p>
+      <cite>— Position exprimée par la ministre allemande de la Justice ; le Comité européen de la protection des données (EDPB) a émis <strong>quatre avis</strong> critiques contre le texte depuis 2023.</cite>
+    </div>
+
+    <h3 style="margin-top:56px;font-family:'Space Grotesk';font-size:1.3rem">Qui lit, qui stocke, qui décide ?</h3>
+    <p class="lede" style="margin-top:12px">La vraie question n'est pas « avez-vous quelque chose à cacher », mais « où finit la copie, et qui y a accès ». Le chemin d'un simple message signalé :</p>
+    <div class="flow">
+      <div class="node scan reveal"><div class="t">📱 Votre appareil</div><div class="d">Le contenu est analysé localement, avant chiffrement</div></div>
+      <div class="arrow reveal">→</div>
+      <div class="node store reveal"><div class="t">🏢 Le fournisseur</div><div class="d">Un « hit » déclenche transmission &amp; conservation du contenu + métadonnées</div></div>
+      <div class="arrow reveal">→</div>
+      <div class="node reveal"><div class="t">🇪🇺 Centre EU + autorités</div><div class="d">Signalement à un centre européen, puis aux polices nationales</div></div>
+    </div>
+    <p style="color:var(--ink-3);font-size:12.5px;margin-top:16px">Chaque flèche est un point de copie, de fuite potentielle et de faux positifs. Un algorithme se trompe : une photo de vacances, un dessin, une conversation médicale peuvent être signalés, transmis et conservés.</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- EURO NUMÉRIQUE -->
+<section id="euro">
+  <div class="wrap">
+    <span class="sec-tag">02 — La monnaie de banque centrale</span>
+    <h2>L'euro numérique : une monnaie qui peut vous voir dépenser</h2>
+    <p class="lede">La BCE prépare une monnaie numérique de banque centrale (MNBC). Ses défenseurs promettent souveraineté et modernité. Ses critiques pointent une architecture où <strong>chaque transaction est, par conception, potentiellement traçable et conditionnable</strong>. L'argent liquide est anonyme ; un euro numérique centralisé ne l'est pas par défaut.</p>
+
+    <div class="grid g3">
+      <div class="card reveal">
+        <div class="ic">🧾</div>
+        <h3>Traçabilité par défaut</h3>
+        <p>Une monnaie centralisée peut enregistrer qui paie qui, quand, où et pour quoi. La BCE met en avant un « mode hors-ligne » sans historique, mais le mode en ligne, lui, laisse une trace.</p>
+      </div>
+      <div class="card amber reveal">
+        <div class="ic">⚙️</div>
+        <h3>Argent programmable</h3>
+        <p>Une MNBC ouvre la porte à des règles inscrites dans la monnaie : dates d'expiration, restrictions d'usage, plafonds. Utile en théorie, redoutable si le pouvoir de décider glisse vers le contrôle du comportement.</p>
+      </div>
+      <div class="card amber reveal">
+        <div class="ic">🚧</div>
+        <h3>Plafond de détention</h3>
+        <p>Un plafond de l'ordre de <strong>3&nbsp;000&nbsp;€</strong> est discuté. Un chiffre technique, mais qui rappelle que les paramètres de votre argent seraient fixés ailleurs — et modifiables.</p>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile reveal"><div class="v blue">81 %</div><div class="k">des adultes européens s'inquiètent des atteintes à leur vie privée (2025)</div><div class="src">enquête citée par la BCE</div></div>
+      <div class="tile reveal"><div class="v blue">43 %</div><div class="k">classent la vie privée comme enjeu n°1 de l'euro numérique, avant la sécurité</div><div class="src">consultation publique</div></div>
+      <div class="tile reveal"><div class="v amber">~2029</div><div class="k">horizon d'un possible déploiement selon le calendrier BCE</div><div class="src">calendrier BCE</div></div>
+      <div class="tile reveal"><div class="v amber">3 000 €</div><div class="k">plafond de détention envisagé par transaction / portefeuille</div><div class="src">débats BCE</div></div>
+    </div>
+    <p style="color:var(--ink-3);font-size:12.5px;margin-top:18px">La CNIL et la Bundesbank travaillent sur des garde-fous (minimisation des données, mode hors-ligne). Le débat n'est pas « pour ou contre la technologie », mais <strong>quelles limites sont gravées dans le code — et par qui elles peuvent être changées</strong>.</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CONVERGENCE -->
+<section id="convergence">
+  <div class="wrap">
+    <span class="sec-tag red">03 — Le point de bascule</span>
+    <h2>La convergence : communication tracée + argent tracé</h2>
+    <p class="lede">Pris isolément, chaque projet a ses garde-fous et ses défenseurs de bonne foi. Le risque est dans la <strong>combinaison</strong>. Une infrastructure capable de lire ce que vous dites, couplée à une monnaie capable d'enregistrer ce que vous achetez, produit une carte quasi complète d'une vie : opinions, santé, relations, déplacements, convictions.</p>
+    <div class="grid g2">
+      <div class="card reveal">
+        <div class="ic">🧩</div>
+        <h3>Ce n'est pas « rien à cacher »</h3>
+        <p>La vie privée n'est pas le secret, c'est le contrôle. Une société où l'on se sait observé s'autocensure : militants, journalistes, lanceurs d'alerte, minorités et victimes en paient le prix les premiers. La liberté d'expression suppose un espace non surveillé.</p>
+      </div>
+      <div class="card red reveal">
+        <div class="ic">🕰️</div>
+        <h3>L'effet cliquet</h3>
+        <p>Une capacité de surveillance, une fois construite, se démantèle rarement. Elle change de mains, s'élargit « pour de bonnes raisons », survit aux gouvernements qui l'ont créée. On ne conçoit pas un outil pour ses amis — mais pour tous ceux qui en hériteront.</p>
+      </div>
     </div>
   </div>
+</section>
 
-  <!-- CARTE 3D -->
+<div class="divider"></div>
 
-  <div class="card-wrap">
-    <div class="card" id="card">
-      <!-- FACE AVANT -->
-      <div class="card-f">
-        <div class="card-grid"></div>
-        <div>
-          <div class="card-logo">SANDISK</div>
-          <div class="card-ticker">NASDAQ : SNDK · AI STORAGE</div>
+<!-- BRÈCHES -->
+<section id="breches">
+  <div class="wrap">
+    <span class="sec-tag amber">04 — L'argument qui fâche</span>
+    <h2>« Vos données seront protégées » — vraiment ?</h2>
+    <p class="lede">Le cœur de la promesse, c'est la sécurité du stockage. Or l'Europe, et la France en particulier, collectionnent déjà les brèches record. Avant de confier <em>encore plus</em> de données sensibles — messages, transactions — à des bases centralisées, regardons le bilan réel. Ces chiffres sont publics et vérifiables.</p>
+
+    <div class="chart-wrap reveal">
+      <div class="chart-head">
+        <h3>Personnes touchées par les grandes fuites françaises</h3>
+        <span class="note">en millions · sources publiques 2024–2026</span>
+      </div>
+      <div id="chart">
+        <div class="bar-row" data-val="43">
+          <div class="bar-label">France Travail<span class="yr">2024 · nom, date de naissance, NIR, coordonnées</span></div>
+          <div class="bar-track"><div class="bar-fill"><span class="val">43 M</span></div></div>
         </div>
-        <div>
-          <div class="card-price">$906.12 <span class="card-delta">▲+2500%</span></div>
+        <div class="bar-row" data-val="33">
+          <div class="bar-label">Viamedis &amp; Almerys<span class="yr">2024 · tiers payant santé · NIR, état civil</span></div>
+          <div class="bar-track"><div class="bar-fill"><span class="val">33 M</span></div></div>
         </div>
-        <div class="card-bottom">
-          <div>
-            <div class="card-cap-label">MARKET CAP</div>
-            <div class="card-cap">$131.6B</div>
-          </div>
-          <div class="card-idx">NDX-100<br>20 AVR 2026</div>
+        <div class="bar-row" data-val="19">
+          <div class="bar-label">Free (mobile + fixe)<span class="yr">2024 · dont IBAN de millions d'abonnés</span></div>
+          <div class="bar-track"><div class="bar-fill"><span class="val">≈ 19 M</span></div></div>
         </div>
-        <div class="card-chip"></div>
+        <div class="bar-row" data-val="6.9">
+          <div class="bar-label">Bouygues Telecom<span class="yr">2025 · données clients + IBAN</span></div>
+          <div class="bar-track"><div class="bar-fill"><span class="val">6,9 M</span></div></div>
+        </div>
+        <div class="bar-row" data-val="5.6">
+          <div class="bar-label">SFR<span class="yr">2024–2025 · données abonnés</span></div>
+          <div class="bar-track"><div class="bar-fill"><span class="val">≈ 5,6 M</span></div></div>
+        </div>
       </div>
-      <!-- FACE ARRIÈRE -->
-      <div class="card-b">
-        <div class="card-grid"></div>
-        <div class="card-b-stripe"></div>
-        <div class="card-b-text">CRYPTOCOMIKS</div>
-        <div class="card-b-code">SPIN-OFF : FÉV. 2025&#10;S&amp;P 500 : NOV. 2025&#10;NDX-100 : AVR. 2026&#10;────────────────&#10;$38 → $906 = +2 286%</div>
-        <div class="card-b-stripe"></div>
+      <p style="color:var(--ink-3);font-size:12px;margin-top:18px">Longueur = nombre de personnes concernées. France Travail (43 M) reste la plus grande fuite de l'histoire du pays — soit près des deux tiers de la population française.</p>
+    </div>
+
+    <div class="tiles">
+      <div class="tile reveal"><div class="v red">5 629</div><div class="k">notifications de violations reçues par la CNIL en 2024 — record absolu</div><div class="src">CNIL 2024</div></div>
+      <div class="tile reveal"><div class="v red">×2</div><div class="k">le nombre de brèches touchant + d'1 million de personnes a doublé</div><div class="src">CNIL 2024</div></div>
+      <div class="tile reveal"><div class="v amber">55 M€+</div><div class="k">d'amendes CNIL en 2024 (87 sanctions) — les fuites <em>arrivent</em>, malgré la loi</div><div class="src">rapport CNIL</div></div>
+      <div class="tile reveal"><div class="v amber">42 M€</div><div class="k">d'amende contre Free (27 M€) + Free Mobile (15 M€) en janvier 2026</div><div class="src">CNIL, janv. 2026</div></div>
+    </div>
+
+    <div class="quote reveal">
+      <p>Un État qui n'a pas su protéger le fichier de ses demandeurs d'emploi ni les IBAN de la moitié de ses abonnés télécoms demande aujourd'hui à centraliser vos messages et vos paiements.</p>
+      <cite>— La question n'est pas <em>si</em> une base massive fuitera, mais <em>quand</em>. Chaque nouvelle collecte agrandit la cible.</cite>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- VÉRIFICATEUR -->
+<section id="verifier">
+  <div class="wrap">
+    <span class="sec-tag red">05 — Test personnel</span>
+    <h2>Votre identité a-t-elle déjà fuité ?</h2>
+    <p class="lede">Ces brèches ne sont pas abstraites : elles contiennent peut-être <strong>vos</strong> données. Ce test interroge en direct une base publique de fuites recensées (XposedOrNot) à partir de votre adresse e-mail — la clé technique réellement indexée dans les bases de compromission. Vos prénom et nom servent uniquement à personnaliser le résultat affiché ; <strong>rien n'est envoyé à ce site, aucune donnée n'est stockée ici</strong>.</p>
+
+    <div class="checker">
+      <h3>🔍 Vérificateur de fuite</h3>
+      <p class="desc">Entrez votre identité. La vérification s'effectue sur l'e-mail, en direct, depuis votre navigateur.</p>
+      <div class="form-row">
+        <div class="field"><label for="prenom">Prénom</label><input id="prenom" type="text" placeholder="Jean" autocomplete="off"></div>
+        <div class="field"><label for="nom">Nom</label><input id="nom" type="text" placeholder="Dupont" autocomplete="off"></div>
+        <div class="field full"><label for="email">Adresse e-mail à vérifier</label><input id="email" type="email" placeholder="jean.dupont@exemple.fr" autocomplete="off"></div>
       </div>
-    </div>
-  </div>
+      <button class="btn btn-primary check-btn" id="checkBtn">Vérifier mon identité</button>
 
-  <!-- PRIX -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">SNDK_MARKET_DATA.DAT</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
+      <div class="result" id="result">
+        <div class="rt" id="resultTitle"></div>
+        <p id="resultText"></p>
+        <div class="breach-list" id="breachList"></div>
       </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">DONNÉES DE MARCHÉ</div>
-      <div class="pgrid">
-        <div class="pcell"><span class="plabel">COURS ACTUEL</span><div class="pval amber">$906</div></div>
-        <div class="pcell"><span class="plabel">HIGH 52 SEM.</span><div class="pval green">$965</div></div>
-        <div class="pcell"><span class="plabel">LOW 52 SEM.</span><div class="pval red">$28.94</div></div>
-        <div class="pcell"><span class="plabel">MARKET CAP</span><div class="pval cyan">$131B</div></div>
-        <div class="pcell"><span class="plabel">PERF. YTD</span><div class="pval green">+259%</div></div>
-        <div class="pcell"><span class="plabel">PERF. 12 MOIS</span><div class="pval green">+2500%</div></div>
-        <div class="pcell"><span class="plabel">PRIX SPIN-OFF</span><div class="pval amber">~$38</div></div>
-        <div class="pcell"><span class="plabel">ENTRÉE NDX</span><div class="pval amber">20 AVR</div></div>
-      </div>
-      <div class="loader"><div class="loader-fill"></div></div>
-      <p style="font-size:9px;color:rgba(0,255,65,0.25);text-align:center;">SOURCE : TRADINGVIEW · YAHOO FINANCE · ROBINHOOD · 16.04.2026</p>
+
+      <p class="disclaimer">⚠️ <strong>Comment lire ce résultat.</strong> Les bases de fuites s'indexent par e-mail, jamais de façon fiable par nom seul : « aucune fuite trouvée » signifie que <em>cette adresse</em> n'apparaît pas dans les fuites recensées par XposedOrNot — ce n'est pas une garantie d'absence totale. À l'inverse, une correspondance confirme que l'adresse a bien été exposée. Pour recouper : <a href="https://haveibeenpwned.com" target="_blank" rel="noopener">Have I Been Pwned</a>, <a href="https://monitor.mozilla.org" target="_blank" rel="noopener">Mozilla Monitor</a>, et le <a href="https://www.cnil.fr" target="_blank" rel="noopener">guide de la CNIL</a>. Source technique : <a href="https://xposedornot.com" target="_blank" rel="noopener">XposedOrNot</a> (API publique gratuite).</p>
     </div>
   </div>
+</section>
 
-  <!-- HISTOIRE -->
+<div class="divider"></div>
 
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">ORIGIN_STORY.EXE</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">DU THUMB DRIVE À L'IA</div>
-      <div class="flavor">// "What if I told you this company was worth $38 eighteen months ago?"</div>
-
-```
-  <p>La plupart des gens connaissent SanDisk pour ses clés USB. Peu auraient parié que cette marque deviendrait l'un des actifs les plus stratégiques de la chaîne d'infrastructure IA mondiale.</p>
-
-  <table class="tbl">
-    <tr><th>PÉRIODE</th><th>ÉVÉNEMENT</th><th>STATUT</th></tr>
-    <tr><td>1988</td><td>Fondation · 1er SSD commercial</td><td class="up">ORIGIN</td></tr>
-    <tr><td>2016</td><td>WDC acquiert SanDisk pour $19B</td><td class="neut">M&A</td></tr>
-    <tr><td>Fév. 2025</td><td>Spin-off · listing ~$38</td><td class="up">★ REBIRTH</td></tr>
-    <tr><td>Nov. 2025</td><td>Entrée <span class="hl">S&P 500</span></td><td class="up">▲ INDEX #1</td></tr>
-    <tr><td>Déc. 2025</td><td>$248 · +559% post spin-off</td><td class="up">🚀</td></tr>
-    <tr><td>Avr. 2026</td><td>Entrée <span class="hl">Nasdaq-100</span></td><td class="up">▲ INDEX #2</td></tr>
-    <tr><td>Auj.</td><td><span class="hl">$906</span> · Cap $131Mds</td><td class="up">■ NOW</td></tr>
-  </table>
-
-  <p>Répartition des revenus :</p>
-  <div class="srow"><span class="slabel">ENTERPRISE / DC</span><div class="sbar"><div class="sfill" style="width:55%"></div></div><span class="sval">55%</span></div>
-  <div class="srow"><span class="slabel">CLIENT SSD</span><div class="sbar"><div class="sfill a" style="width:30%"></div></div><span class="sval">30%</span></div>
-  <div class="srow"><span class="slabel">CONSUMER FLASH</span><div class="sbar"><div class="sfill d" style="width:15%"></div></div><span class="sval">15%</span></div>
-
-  <div class="qtbox">
-    Séparée de Western Digital, SanDisk a émergé comme la référence pure-play du stockage flash, au cœur de l'infrastructure requise pour alimenter les modèles d'IA à l'échelle mondiale.
-    <div class="qtsrc">— FinancialContent, Avr. 2026</div>
-  </div>
-</div>
-```
-
-  </div>
-
-  <!-- POURQUOI ÇA MONTE -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">THE_SILENT_SQUEEZE.EXE</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">POURQUOI +2 500% EN 12 MOIS</div>
-      <div class="flavor">// "There is no spoon." · Ni capacité NAND disponible.</div>
-
-```
-  <div class="rgrid">
-    <div class="rc rl">
-      <div class="rc-title">⚡ L'IA CONSOMME DU STORAGE</div>
-      <div class="rc-desc">L'inférence IA lit d'énormes volumes de données stockées. Les hyperscalers sécurisent l'approvisionnement plutôt que de négocier les prix. SanDisk est au carrefour exact.</div>
-    </div>
-    <div class="rc rm">
-      <div class="rc-title">⚡ LE "SILENT SQUEEZE"</div>
-      <div class="rc-desc">En 2023-2024, les fabricants NAND ont coupé leurs investissements. Quand l'explosion IA est arrivée, l'offre était insuffisante. Pénurie attendue jusqu'en 2027-2028.</div>
-    </div>
-    <div class="rc rl">
-      <div class="rc-title">⚡ PURE PLAY = PRIME DE MARCHÉ</div>
-      <div class="rc-desc">Sans le poids des HDD legacy, SanDisk est valorisée directement sur sa seule activité flash. Narrative clair, prime de valorisation.</div>
-    </div>
-    <div class="rc rm">
-      <div class="rc-title">⚡ INDICES = FLUX PASSIFS</div>
-      <div class="rc-desc">S&P 500 (nov. 2025) + Nasdaq-100 (avr. 2026) : deux vagues d'achats obligatoires. $600Mds d'actifs concernés mécaniquement.</div>
+<!-- QUE FAIRE -->
+<section id="agir">
+  <div class="wrap">
+    <span class="sec-tag">06 — Reprendre la main</span>
+    <h2>Ce que vous pouvez faire, concrètement</h2>
+    <div class="steps">
+      <div class="step reveal"><div class="n">1</div><div><h3>Vérifiez et surveillez vos fuites</h3><p>Testez vos adresses ci-dessus, puis activez une surveillance continue via <a href="https://haveibeenpwned.com" target="_blank" rel="noopener">Have I Been Pwned</a> ou <a href="https://monitor.mozilla.org" target="_blank" rel="noopener">Mozilla Monitor</a>. Changez les mots de passe des comptes exposés.</p></div></div>
+      <div class="step reveal"><div class="n">2</div><div><h3>Chiffrez vraiment vos échanges</h3><p>Privilégiez des messageries à chiffrement de bout en bout et un modèle sans scan côté client. Comprendre le client-side scanning, c'est déjà savoir ce qu'on veut protéger.</p></div></div>
+      <div class="step reveal"><div class="n">3</div><div><h3>Suivez le dossier, informez-vous aux sources</h3><p>Les textes évoluent vite. Suivez les positions de la <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL</a>, de l'<a href="https://edpb.europa.eu" target="_blank" rel="noopener">EDPB</a> et des organisations de défense des libertés numériques (La Quadrature du Net, EDRi).</p></div></div>
+      <div class="step reveal"><div class="n">4</div><div><h3>Faites entendre votre voix</h3><p>Consultations publiques, courriers aux eurodéputés, débat autour de vous. Ces décisions se prennent maintenant — le silence est interprété comme un accord.</p></div></div>
     </div>
   </div>
+</section>
 
-  <div class="srow" style="margin-top:14px;"><span class="slabel">PRIX NAND Q1 2026</span><div class="sbar"><div class="sfill a" style="width:88%"></div></div><span class="sval">+38%</span></div>
-  <div class="srow"><span class="slabel">PRIX DRAM Q1 2026</span><div class="sbar"><div class="sfill" style="width:65%"></div></div><span class="sval">+65%</span></div>
-  <div class="srow"><span class="slabel">CAPEX HYPERS. 2026</span><div class="sbar"><div class="sfill c" style="width:96%"></div></div><span class="sval">$600B</span></div>
-</div>
-```
+<div class="divider"></div>
 
+<!-- SOURCES -->
+<section id="sources">
+  <div class="wrap">
+    <span class="sec-tag">07 — Vérifiez tout vous-même</span>
+    <h2>Sources</h2>
+    <p class="lede">Ce rapport s'appuie uniquement sur des sources publiques. Les chiffres sont vérifiables ; le compteur en direct est une <em>modélisation</em> explicitement fondée sur ces données, pas une mesure temps réel.</p>
+    <ul class="sources">
+      <li><a href="https://www.cnil.fr/en/data-breach-5million-fine-france-travail" target="_blank" rel="noopener">CNIL — Amende de 5 M€ contre France Travail (violation de données)</a></li>
+      <li><a href="https://www.bleepingcomputer.com/news/security/french-unemployment-agency-data-breach-impacts-43-million-people/" target="_blank" rel="noopener">BleepingComputer — France Travail : 43 millions de personnes touchées</a></li>
+      <li><a href="https://www.securityweek.com/43-million-possibly-impacted-by-french-government-agency-data-breach/" target="_blank" rel="noopener">SecurityWeek — 43 millions potentiellement impactés</a></li>
+      <li><a href="https://cyberinsider.com/massive-breach-exposed-data-of-43-million-people-in-france/" target="_blank" rel="noopener">CyberInsider — Détail des données exposées (France Travail)</a></li>
+      <li><a href="https://www.corbado.com/blog/data-breaches-france" target="_blank" rel="noopener">Corbado — Les plus grandes fuites de données en France (2026)</a></li>
+      <li><a href="https://www.upguard.com/blog/biggest-data-breaches-france" target="_blank" rel="noopener">UpGuard — Biggest Data Breaches in France</a></li>
+      <li><a href="https://www.infosecurity-magazine.com/news/france-finesemployment-agency-5m/" target="_blank" rel="noopener">Infosecurity — France fines employment agency €5M</a></li>
+      <li><a href="https://natlawreview.com/article/cnil-publishes-2024-annual-activity-report" target="_blank" rel="noopener">CNIL — Rapport annuel 2024 (5 629 notifications, sanctions)</a></li>
+      <li><a href="https://tuta.com/blog/chat-control-criticism" target="_blank" rel="noopener">Tuta — Critique de ChatControl / vérification d'âge</a></li>
+      <li><a href="https://factually.co/fact-checks/technology/revised-chat-control-proposal-december-2025-summary-b00736" target="_blank" rel="noopener">Factually — La révision de décembre 2025 de ChatControl</a></li>
+      <li><a href="https://www.techradar.com/vpn/vpn-privacy-security/chat-control-eu-lawmakers-finally-agree-on-the-voluntary-scanning-of-your-private-chats" target="_blank" rel="noopener">TechRadar — Le scan « volontaire » des messages privés</a></li>
+      <li><a href="https://www.cnil.fr/en/digital-euro-what-stake-privacy-and-personal-data-protection" target="_blank" rel="noopener">CNIL — Euro numérique : quels enjeux pour la vie privée ?</a></li>
+      <li><a href="https://www.cnil.fr/en/confidentiality-digital-euro-where-are-we" target="_blank" rel="noopener">CNIL — Confidentialité de l'euro numérique : où en est-on ?</a></li>
+      <li><a href="https://www.bundesbank.de/en/press/speeches/the-digital-euro-and-the-protection-of-privacy-935192" target="_blank" rel="noopener">Bundesbank — L'euro numérique et la protection de la vie privée</a></li>
+      <li><a href="https://cryptobriefing.com/digital-euro-privacy-concerns-ecb/" target="_blank" rel="noopener">CryptoBriefing — Inquiétudes sur le contrôle et la vie privée financière</a></li>
+      <li><a href="https://xposedornot.com/api_doc" target="_blank" rel="noopener">XposedOrNot — Documentation de l'API (vérificateur de fuite)</a></li>
+    </ul>
   </div>
+</section>
 
-  <!-- FINANCIALS -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">FINANCIALS_Q2_FY2026.DAT</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
+<footer>
+  <div class="wrap foot-in">
+    <div>
+      <div class="brand"><span class="dot"></span> SURVEILLANCE&nbsp;2026</div>
+      <p style="margin-top:12px">Rapport d'information indépendant à visée pédagogique. Il synthétise des positions et des faits publics pour nourrir le débat démocratique ; il ne remplace pas les textes officiels ni un conseil juridique. Les projets évoluent — recoupez toujours aux sources.</p>
+      <span class="badge">Aucun cookie · Aucun traceur · Aucune donnée collectée</span>
     </div>
-    <div class="win-body">
-      <div class="stitle">RÉSULTATS Q2 FY2026</div>
-      <div class="flavor">// "Show me the money." — Jerry Maguire, 1996</div>
-
-```
-  <table class="tbl">
-    <tr><th>MÉTRIQUE</th><th>RÉSULTAT</th><th>SURPRISE</th></tr>
-    <tr><td>Chiffre d'affaires</td><td class="up">$3.03 Mds</td><td class="up">+12.6%</td></tr>
-    <tr><td>Croissance YoY</td><td class="up">+61%</td><td class="up">🔥</td></tr>
-    <tr><td>EPS non-GAAP</td><td class="up">$6.20</td><td class="up">+71.4%</td></tr>
-    <tr><td>Datacenter +64% QoQ</td><td class="up">$440M</td><td class="up">💥</td></tr>
-    <tr><td>Marge brute</td><td class="up">51.1%</td><td class="up">↑↑</td></tr>
-    <tr><td>Free Cash Flow</td><td class="up">$843M</td><td class="up">💰</td></tr>
-  </table>
-
-  <p style="margin-top:12px;">Guidance <span class="hl">Q3 FY2026</span> — résultats le <span class="hl">30 avril</span> :</p>
-
-  <div class="pgrid" style="margin-top:8px;">
-    <div class="pcell"><span class="plabel">REVENUS GUIDÉS</span><div class="pval green" style="font-size:18px;">$4.4–4.8B</div></div>
-    <div class="pcell"><span class="plabel">MARGE BRUTE</span><div class="pval green">65–67%</div></div>
-    <div class="pcell"><span class="plabel">EPS GUIDÉ</span><div class="pval green">$12–14</div></div>
-    <div class="pcell"><span class="plabel">CROISSANCE SEQ.</span><div class="pval amber">+45–58%</div></div>
+    <p style="align-self:flex-start">« La vie privée n'est pas le fait d'avoir quelque chose à cacher.<br>C'est le droit de ne pas avoir à tout montrer. »</p>
   </div>
-
-  <div class="qtbox">
-    Avec la High Bandwidth Flash, nous créons un nouveau paradigme pour les solutions d'inférence IA.
-    <div class="qtsrc">— David Goeckeler, CEO SanDisk</div>
-  </div>
-</div>
-```
-
-  </div>
-
-  <!-- NASDAQ-100 -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">NDX100_INCLUSION.EXE — 20.04.2026</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">ENTRÉE AU NASDAQ-100</div>
-
-```
-  <p><span class="tag tag-a">OFFICIEL</span> Annoncé le 10 avril 2026 : SanDisk remplace <span class="hlr">Atlassian (TEAM)</span> à l'ouverture du <span class="hl">lundi 20 avril 2026</span>.</p>
-  <p>À ne pas confondre avec l'entrée au <span class="hlc">S&P 500 le 28 novembre 2025</span> — deux événements distincts, deux vagues de flux séparées.</p>
-
-  <table class="tbl">
-    <tr><th>EFFET</th><th>DESCRIPTION</th><th>TIMING</th></tr>
-    <tr><td>Achats passifs</td><td>200+ produits · $600B AUM concernés</td><td class="up">Avant le 20/04</td></tr>
-    <tr><td>Visibilité inst.</td><td>Sell-side et buy-side forcés de couvrir</td><td class="neut">Court terme</td></tr>
-    <tr><td>Liquidité</td><td>Volumes, options, spread amélioré</td><td class="neut">Structurel</td></tr>
-    <tr><td>Effet capté</td><td>+12% à l'annonce → $952 → $906. L'annonce fait souvent l'essentiel.</td><td class="down">Partiel.</td></tr>
-  </table>
-
-  <div class="divider">═══ // QUICK MATH // ═══</div>
-  <p>Si 0,1% des $600Mds d'AUM indexés NDX doivent acheter SNDK = <span class="hl">$600 millions</span> de demande mécanique. Et c'est le plancher.</p>
-</div>
-```
-
-  </div>
-
-  <!-- ANALYSTES -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">ANALYST_CONSENSUS.DAT</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">LES ANALYSTES</div>
-      <div class="flavor">// "Roads? Where we're going, we don't need roads." — BTTF, 1985</div>
-
-```
-  <table class="tbl">
-    <tr><th>MAISON</th><th>OBJECTIF</th><th>UPSIDE</th></tr>
-    <tr><td>Evercore ISI</td><td class="up">$1,200</td><td class="up">+32%</td></tr>
-    <tr><td>Bernstein</td><td class="up">$1,250</td><td class="up">+38%</td></tr>
-    <tr><td>Mizuho</td><td class="up">$1,000</td><td class="up">+10%</td></tr>
-    <tr><td>Cantor Fitz.</td><td class="up">$1,000</td><td class="up">+10%</td></tr>
-    <tr><td>Bull case max</td><td class="up">$2,600</td><td class="up">+187%</td></tr>
-    <tr><td>Consensus moy.</td><td class="down">$611</td><td class="down">⚠ En retard</td></tr>
-  </table>
-
-  <p style="margin-top:12px;">Les trois zones :</p>
-
-  <div class="sc bull">
-    <div class="sc-tag">🟢 ZONE RAISONNABLE — $980 → $1,050</div>
-    <p>Cycle solide, résultats Q3 dans la guidance. Scénario le plus probable.</p>
-  </div>
-  <div class="sc base">
-    <div class="sc-tag">🟡 ZONE HAUSSIÈRE CRÉDIBLE — $1,150 → $1,250</div>
-    <p>Demande datacenter très forte, prix NAND maintenus, surprises positives continues.</p>
-  </div>
-  <div class="sc bear">
-    <div class="sc-tag">🔴 ZONE SUPER-BULL — jusqu'à $2,600</div>
-    <p>SanDisk requalifiée comme bénéficiaire structurel IA multi-années. Requiert une exécution parfaite sur la durée.</p>
-  </div>
-</div>
-```
-
-  </div>
-
-  <!-- RISQUES -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">RISK_MATRIX.EXE</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">LES RISQUES</div>
-
-```
-  <div class="rgrid">
-    <div class="rc rh">
-      <div class="rc-title">🔴 CYCLICITÉ NAND</div>
-      <div class="rc-desc">La pénurie actuelle peut devenir suroffre si les fabricants sur-investissent. Délai typique : 18-24 mois. Le NAND est l'un des secteurs les plus volatils de la tech.</div>
-    </div>
-    <div class="rc rm">
-      <div class="rc-title">🟡 TURBOQUANT (GOOGLE)</div>
-      <div class="rc-desc">Mars 2026 : algo de compression IA → panique de -11% sur SNDK. Mais les analystes confirment que TurboQuant cible la DRAM/HBM, pas le NAND flash. Réaction disproportionnée.</div>
-    </div>
-    <div class="rc rh">
-      <div class="rc-title">🔴 VALORISATION TENDUE</div>
-      <div class="rc-desc">À $906, le marché n'exige plus que l'histoire soit bonne. Il exige qu'elle soit <em>exceptionnelle</em>. La moindre déception peut déclencher une correction sévère.</div>
-    </div>
-    <div class="rc rm">
-      <div class="rc-title">🟡 MACRO & EXPORT</div>
-      <div class="rc-desc">Restrictions export NAND vers certains marchés. Géopolitique. Un titre à +2500% est plus sensible aux épisodes de risk-off global.</div>
-    </div>
-  </div>
-
-  <div class="qtbox">
-    À $905, le titre ne demande plus seulement que l'histoire reste bonne — il demande qu'elle reste exceptionnelle.
-    <div class="qtsrc">— Analyse CryptoComiks, Avr. 2026</div>
-  </div>
-</div>
-```
-
-  </div>
-
-  <!-- VERDICT -->
-
-  <div class="win">
-    <div class="win-bar">
-      <span class="win-bar-title">VERDICT.EXE — LES 3 SCÉNARIOS</span>
-      <div class="win-btns">
-        <div class="win-btn">_</div><div class="win-btn">□</div><div class="win-btn">×</div>
-      </div>
-    </div>
-    <div class="win-body">
-      <div class="stitle">LES 3 SCÉNARIOS</div>
-
-```
-  <div class="sc bull">
-    <div class="sc-tag">🟢 BULL — "L'IA NE RALENTIT PAS"</div>
-    <p>Demande explosive, offre contrainte jusqu'en 2028, marges maintenues à 65%+. Résultats Q3 et été 2026 continuent de surprendre.</p>
-    <p><span class="tag tag-g">CIBLE</span> <span class="hlg">$1,000 → $1,250</span> · Bull max : <span class="hlg">$2,600</span></p>
-  </div>
-
-  <div class="sc base">
-    <div class="sc-tag">🟡 BASE — "CONSOLIDATION ORDONNÉE"</div>
-    <p>Fondamentaux solides, mais le titre digère. Absorption de l'effet Nasdaq-100, reprise progressive au rythme des publications.</p>
-    <p><span class="tag tag-a">CIBLE</span> <span class="hl">$950 → $1,050</span></p>
-  </div>
-
-  <div class="sc bear">
-    <div class="sc-tag">🔴 BEAR — "TROP DE PERFECTION DANS LE PRIX"</div>
-    <p>Une déception même modérée déclenche une correction significative. Non par défaillance, mais par excès d'optimisme intégré dans la valorisation.</p>
-    <p><span class="tag tag-r">RISQUE</span> <span class="hlr">$600 → $700</span></p>
-  </div>
-
-  <div class="divider">═══ CATALYSEURS À SURVEILLER ═══</div>
-  <ul>
-    <li><span class="hl">20 Avril</span> — Entrée effective Nasdaq-100</li>
-    <li><span class="hl">30 Avril</span> — Résultats Q3 FY2026 · Test des marges 65%+</li>
-    <li><span class="hl">2026</span> — Qualifications HBF chez les hyperscalers</li>
-    <li><span class="hl">2034</span> — Partenariat Kioxia · Visibilité industrielle unique</li>
-  </ul>
-
-  <div class="loader"><div class="loader-fill"></div></div>
-  <p style="font-size:9px;color:rgba(0,255,65,0.25);text-align:center;">⚠ RAPPORT ÉDUCATIF UNIQUEMENT · NFA · DYOR</p>
-</div>
-```
-
-  </div>
-
-  <!-- CTA -->
-
-  <div class="cta">
-    <div class="cta-title">🎁 UNE ACTION OFFERTE</div>
-    <div class="cta-sub">VOUS VOULEZ UNE ACTION SNDK GRATUITEMENT ?<br>NOUS EN OFFRONS UNE.</div>
-    <div class="cta-body">
-      Rendez-vous sur notre Instagram, envoyez un DM et suivez nos instructions.<br>
-      Nous vous expliquons tout pour récupérer votre action <span class="hl">SNDK</span>.<br>
-      Offre limitée.
-    </div>
-    <a href="https://www.instagram.com/cryptocomiks" target="_blank" class="cta-btn">▶ INSTAGRAM @CRYPTOCOMIKS</a>
-    <div class="cta-note">* Conditions sur Instagram · NFA · Offre soumise à disponibilité</div>
-  </div>
-
-  <div class="ascii">
-══════════════════════════════════════════════
-  FIN DU RAPPORT · CRYPTOCOMIKS · 16.04.2026
-  "Follow the white rabbit."
-══════════════════════════════════════════════
-  </div>
-
-  <div class="footer">
-    <p>© 2026 CryptoComiks · Rapport à titre informatif uniquement · Aucun conseil en investissement</p>
-    <p>Sources : Reuters · Yahoo Finance · TradingView · Seeking Alpha · Barron's · InvestorPlace<br>FinancialContent · Nasdaq IR · GlobeNewswire · Sherwood News · MarketBeat</p>
-    <p style="margin-top:8px;">SNDK.EXE — SESSION TERMINÉE <span class="blink">■</span></p>
-  </div>
-
-</div>
+</footer>
 
 <script>
-/* ─── MATRIX RAIN ─── */
 (function(){
-  const c = document.getElementById('mx');
-  const ctx = c.getContext('2d');
-  const chars = '01SNDK01NANDAI01STORAGE010101';
-  const fs = 12;
-  let cols, drops;
+  "use strict";
 
-  function resize(){
-    c.width  = window.innerWidth;
-    c.height = window.innerHeight;
-    cols  = Math.floor(c.width / fs);
-    drops = Array.from({length:cols}, () => Math.random() * -80);
+  /* ---- LIVE COUNTER (modeled estimate, transparent) ---- */
+  var counterEl = document.getElementById("counter");
+  var TOTAL = 145000000;                 // records exposed 2024-2025 (public sources)
+  var SPAN_SEC = 2 * 365.25 * 24 * 3600; // spread over 24 months
+  var RATE = TOTAL / SPAN_SEC;           // ~2.297 records / second
+  var EPOCH = Date.UTC(2024, 0, 1) / 1000;
+  var fmt = new Intl.NumberFormat("fr-FR");
+  function tick(){
+    var now = Date.now() / 1000;
+    var v = Math.floor((now - EPOCH) * RATE);
+    counterEl.textContent = fmt.format(v);
   }
-  resize();
-  window.addEventListener('resize', resize);
+  tick();
+  setInterval(tick, 900);
 
-  function draw(){
-    ctx.fillStyle = 'rgba(0,0,0,0.055)';
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.font = fs + 'px Share Tech Mono';
-    for(let i = 0; i < drops.length; i++){
-      const r = Math.random();
-      ctx.fillStyle = r > 0.97 ? '#00ff41' : r > 0.85 ? '#006618' : '#002808';
-      ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fs, drops[i]*fs);
-      if(drops[i]*fs > c.height && Math.random() > 0.975) drops[i] = 0;
-      drops[i]++;
+  /* ---- SCROLL REVEAL ---- */
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, {threshold:.14});
+  document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+
+  /* ---- BAR CHART (animate on view) ---- */
+  var maxVal = 43;
+  var chartObs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      document.querySelectorAll("#chart .bar-row").forEach(function(row, i){
+        var val = parseFloat(row.getAttribute("data-val"));
+        var fill = row.querySelector(".bar-fill");
+        var ratio = val / maxVal;
+        if(ratio < 0.24) fill.classList.add("short");
+        setTimeout(function(){
+          fill.style.width = Math.max(6, ratio * 100) + "%";
+          fill.classList.add("on");
+        }, 120 * i);
+      });
+      chartObs.disconnect();
+    });
+  }, {threshold:.3});
+  var chartNode = document.getElementById("chart");
+  if(chartNode) chartObs.observe(chartNode);
+
+  /* ---- IDENTITY LEAK CHECKER ---- */
+  var btn = document.getElementById("checkBtn");
+  var result = document.getElementById("result");
+  var rTitle = document.getElementById("resultTitle");
+  var rText = document.getElementById("resultText");
+  var breachList = document.getElementById("breachList");
+
+  function show(kind, title, text){
+    result.className = "result show " + kind;
+    rTitle.textContent = title;
+    rText.innerHTML = text;
+  }
+  function fullName(){
+    var p = document.getElementById("prenom").value.trim();
+    var n = document.getElementById("nom").value.trim();
+    var s = (p + " " + n).trim();
+    return s || "Votre identité";
+  }
+
+  btn.addEventListener("click", function(){
+    var email = document.getElementById("email").value.trim();
+    var name = fullName();
+    breachList.innerHTML = "";
+
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      show("err", "⚠️ E-mail requis", "La vérification technique se fait sur une adresse e-mail valide (c'est la clé indexée dans les bases de fuites). Entrez une adresse pour continuer.");
+      return;
     }
+
+    btn.disabled = true;
+    var original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Analyse en cours…';
+    result.className = "result";
+
+    var url = "https://api.xposedornot.com/v1/check-email/" + encodeURIComponent(email);
+
+    var done = function(){ btn.disabled = false; btn.innerHTML = original; };
+
+    fetch(url, {method:"GET", headers:{"Accept":"application/json"}})
+      .then(function(res){
+        if(res.status === 404) return {__none:true};
+        if(!res.ok) throw new Error("http " + res.status);
+        return res.json();
+      })
+      .then(function(data){
+        done();
+        var breaches = [];
+        if(data && !data.__none){
+          if(Array.isArray(data.breaches)){
+            // API shape: {"breaches":[["Name1","Name2",...]]}
+            breaches = Array.isArray(data.breaches[0]) ? data.breaches[0] : data.breaches;
+          }
+        }
+        if(data && data.Error && /not found/i.test(data.Error)) breaches = [];
+
+        if(breaches && breaches.length){
+          show("leak",
+            "🔴 " + name + ", cette adresse a fuité.",
+            "L'adresse <strong>" + escapeHtml(email) + "</strong> apparaît dans <strong>" + breaches.length + "</strong> fuite(s) recensée(s). Changez immédiatement les mots de passe associés, activez la double authentification, et surveillez vos comptes bancaires si un IBAN a pu être exposé.");
+          breaches.slice(0, 24).forEach(function(b){
+            var chip = document.createElement("span");
+            chip.className = "breach-chip";
+            chip.textContent = String(b);
+            breachList.appendChild(chip);
+          });
+        } else {
+          show("safe",
+            "🟢 " + name + ", aucune fuite trouvée.",
+            "Bonne nouvelle : l'adresse <strong>" + escapeHtml(email) + "</strong> n'apparaît pas (encore) dans les fuites recensées par XposedOrNot. Ce n'est pas une garantie absolue — recoupez avec les liens officiels ci-dessous et restez vigilant : chaque nouvelle base centralisée agrandit la surface de risque.");
+        }
+      })
+      .catch(function(){
+        done();
+        show("err",
+          "⚠️ Vérification indisponible",
+          "Impossible de contacter le service de vérification à l'instant (réseau, blocage ou limite de requêtes). Réessayez dans un moment, ou vérifiez directement sur <a href=\"https://haveibeenpwned.com\" target=\"_blank\" rel=\"noopener\">Have I Been Pwned</a> et <a href=\"https://monitor.mozilla.org\" target=\"_blank\" rel=\"noopener\">Mozilla Monitor</a>.");
+      });
+  });
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
   }
-  setInterval(draw, 55);
-})();
 
-/* ─── CARD TOUCH DRAG ─── */
-(function(){
-  const card = document.getElementById('card');
-  let dragging = false, startX = 0, baseAngle = 0;
-
-  function getAngle(){
-    const m = new DOMMatrix(window.getComputedStyle(card).transform);
-    return Math.round(Math.atan2(m.m13, m.m11) * (180/Math.PI));
-  }
-
-  function startDrag(x){
-    dragging = true;
-    startX = x;
-    baseAngle = getAngle();
-    card.style.animationPlayState = 'paused';
-  }
-
-  function moveDrag(x){
-    if(!dragging) return;
-    const d = (x - startX) * 0.5;
-    card.style.transform = `rotateY(${baseAngle + d}deg) rotateX(3deg)`;
-  }
-
-  function endDrag(){
-    if(!dragging) return;
-    dragging = false;
-    setTimeout(()=>{
-      card.style.transform = '';
-      card.style.animationPlayState = 'running';
-    }, 2500);
-  }
-
-  card.addEventListener('mousedown',  e => startDrag(e.clientX));
-  document.addEventListener('mousemove', e => moveDrag(e.clientX));
-  document.addEventListener('mouseup',   endDrag);
-
-  card.addEventListener('touchstart', e => { startDrag(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
-  card.addEventListener('touchmove',  e => { moveDrag(e.touches[0].clientX);  e.preventDefault(); }, {passive:false});
-  card.addEventListener('touchend',   endDrag);
-
-  /* price flicker */
-  document.querySelectorAll('.pval').forEach(el => {
-    setInterval(()=>{
-      if(Math.random() < 0.012){ el.style.opacity='0.4'; setTimeout(()=>el.style.opacity='1', 70); }
-    }, 1000);
+  /* allow Enter key in email field */
+  document.getElementById("email").addEventListener("keydown", function(e){
+    if(e.key === "Enter") btn.click();
   });
 })();
 </script>
-
 </body>
 </html>
