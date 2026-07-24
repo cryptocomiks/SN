@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dormant — Détectez les biens immobiliers oubliés</title>
+<meta name="description" content="Repérez sur une carte les biens qui n'ont pas changé de propriétaire depuis des années. Données publiques : cadastre, DVF. Lyon et métropole.">
+<style>
+/* ============================================================
+   Design system — épuré, arrondi, typographie système (aucun CDN)
+   ============================================================ */
+:root{
+  --bg:#ffffff;
+  --bg-soft:#f5f5f7;
+  --bg-card:#ffffff;
+  --txt:#1d1d1f;
+  --txt-dim:#6e6e73;
+  --line:#e3e3e6;
+  --accent:#0071e3;
+  --accent-soft:#e8f2ff;
+  --shadow:0 4px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 18px 60px rgba(0,0,0,.10);
+  --r-sm:12px; --r:18px; --r-lg:26px; --r-xl:34px;
+  --dormant:#c0392b; --mid:#e8a33d; --fresh:#2fa96b;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#000000; --bg-soft:#0d0d0f; --bg-card:#141416;
+    --txt:#f5f5f7; --txt-dim:#98989d; --line:#2a2a2e;
+    --accent:#2b8fff; --accent-soft:#122438;
+    --shadow:0 4px 24px rgba(0,0,0,.5); --shadow-lg:0 18px 60px rgba(0,0,0,.6);
+  }
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.5; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* ---------- NAV ---------- */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--line);
+}
+.nav-in{max-width:1080px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;gap:28px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.logo-mark{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#7c5cff);
+  display:grid;place-items:center;flex:0 0 auto}
+.nav-links{display:flex;gap:24px;margin-left:auto;align-items:center}
+.nav-links a{font-size:13px;color:var(--txt-dim);transition:color .2s}
+.nav-links a:hover{color:var(--txt)}
+/* Le bouton de la nav est un <a> : sans cette règle, `.nav-links a` (plus
+   spécifique que `.btn-primary`) délaverait son texte blanc. */
+.nav-links a.btn-primary,.nav-links a.btn-primary:hover{color:#fff}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 22px;border-radius:980px;font-size:15px;font-weight:500;
+  border:1px solid transparent;cursor:pointer;transition:.2s;white-space:nowrap;
+  font-family:inherit;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--txt);border-color:var(--line)}
+.btn-ghost:hover{background:var(--bg-soft)}
+.btn-sm{padding:7px 16px;font-size:13px}
+@media(max-width:760px){.nav-links a:not(.btn){display:none}}
+
+/* ---------- HERO ---------- */
+header{padding:88px 0 40px;text-align:center}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--accent);
+  background:var(--accent-soft);padding:6px 14px;border-radius:980px;margin-bottom:22px;font-weight:500;
+}
+h1{
+  font-size:clamp(38px,6.2vw,66px);line-height:1.06;letter-spacing:-.035em;font-weight:650;
+  max-width:14ch;margin:0 auto 20px;
+}
+.sub{font-size:clamp(17px,2.1vw,21px);color:var(--txt-dim);max-width:58ch;margin:0 auto 32px;letter-spacing:-.01em}
+.hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-note{margin-top:16px;font-size:13px;color:var(--txt-dim)}
+
+/* ---------- MOCKUP CARTE ---------- */
+.mock{
+  margin:56px auto 0;max-width:940px;border-radius:var(--r-xl);overflow:hidden;
+  border:1px solid var(--line);box-shadow:var(--shadow-lg);background:var(--bg-card);
+}
+.mock-bar{height:38px;background:var(--bg-soft);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;padding:0 14px;gap:7px}
+.dot{width:10px;height:10px;border-radius:50%}
+.mock-url{margin-left:12px;font-size:11px;color:var(--txt-dim);background:var(--bg);
+  padding:3px 12px;border-radius:6px;border:1px solid var(--line)}
+.mock-body{display:grid;grid-template-columns:190px 1fr;height:390px}
+.mock-side{border-right:1px solid var(--line);padding:16px;background:var(--bg-card)}
+.mock-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt-dim);margin-bottom:9px}
+.mock-row{height:9px;border-radius:5px;background:var(--bg-soft);margin-bottom:8px}
+.mock-row.w70{width:70%}.mock-row.w50{width:50%}.mock-row.w85{width:85%}
+.mock-pill{height:26px;border-radius:9px;background:var(--accent);opacity:.9;margin-top:14px}
+.mock-legend{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:10px;color:var(--txt-dim)}
+.sw{width:11px;height:11px;border-radius:3px}
+.mock-map{position:relative;background:var(--bg-soft);overflow:hidden}
+.mock-map svg{position:absolute;inset:0;width:100%;height:100%}
+@media(max-width:700px){.mock-body{grid-template-columns:1fr;height:300px}.mock-side{display:none}}
+
+/* ---------- SECTIONS ---------- */
+section{padding:88px 0}
+.sec-soft{background:var(--bg-soft)}
+.sec-head{text-align:center;margin-bottom:52px}
+h2{font-size:clamp(28px,4.2vw,42px);letter-spacing:-.03em;font-weight:650;line-height:1.12;margin-bottom:14px}
+.sec-head p{color:var(--txt-dim);font-size:17px;max-width:56ch;margin:0 auto;letter-spacing:-.01em}
+
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:20px}
+.card{
+  background:var(--bg-card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:30px 26px;box-shadow:var(--shadow);transition:.25s;
+}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.icon{
+  width:42px;height:42px;border-radius:13px;background:var(--accent-soft);
+  display:grid;place-items:center;margin-bottom:18px;
+}
+.card h3{font-size:17px;font-weight:600;margin-bottom:9px;letter-spacing:-.015em}
+.card p{font-size:14.5px;color:var(--txt-dim);line-height:1.6}
+
+/* ---------- ÉTAPES ---------- */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:36px;counter-reset:s}
+.step{counter-increment:s;position:relative;padding-top:52px}
+.step::before{
+  content:counter(s);position:absolute;top:0;left:0;width:36px;height:36px;border-radius:50%;
+  background:var(--txt);color:var(--bg);display:grid;place-items:center;font-size:15px;font-weight:600;
+}
+.step h3{font-size:17px;font-weight:600;margin-bottom:8px;letter-spacing:-.015em}
+.step p{font-size:14.5px;color:var(--txt-dim);line-height:1.6}
+
+/* ---------- PRICING ---------- */
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:20px;align-items:start}
+.plan{
+  background:var(--bg-card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:30px 26px;display:flex;flex-direction:column;box-shadow:var(--shadow);position:relative;transition:.25s;
+}
+.plan:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.plan.featured{border-color:var(--accent);border-width:2px;box-shadow:0 18px 60px color-mix(in srgb,var(--accent) 18%,transparent)}
+.badge{
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:var(--accent);color:#fff;font-size:11px;font-weight:600;
+  padding:5px 14px;border-radius:980px;letter-spacing:.02em;white-space:nowrap;
+}
+.plan-name{font-size:15px;font-weight:600;margin-bottom:5px}
+.plan-desc{font-size:13px;color:var(--txt-dim);margin-bottom:20px;min-height:36px;line-height:1.45}
+.price{display:flex;align-items:baseline;gap:4px;margin-bottom:22px}
+.price .amt{font-size:42px;font-weight:650;letter-spacing:-.035em}
+.price .per{font-size:14px;color:var(--txt-dim)}
+.feats{list-style:none;margin:22px 0 0;flex:1}
+.feats li{display:flex;gap:10px;font-size:14px;margin-bottom:11px;color:var(--txt-dim);line-height:1.45}
+.feats li b{color:var(--txt);font-weight:600}
+.check{flex:0 0 auto;margin-top:2px;color:var(--accent);font-weight:700}
+.plan .btn{width:100%;margin-top:6px}
+
+/* ---------- FAQ ---------- */
+.faq{max-width:720px;margin:0 auto}
+details{border-bottom:1px solid var(--line);padding:20px 0}
+summary{font-size:16.5px;font-weight:550;cursor:pointer;list-style:none;display:flex;
+  justify-content:space-between;align-items:center;gap:16px;letter-spacing:-.015em}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:22px;color:var(--txt-dim);font-weight:400;flex:0 0 auto}
+details[open] summary::after{content:"−"}
+details p{margin-top:13px;color:var(--txt-dim);font-size:14.5px;line-height:1.65}
+
+/* ---------- CTA FINAL ---------- */
+.cta-final{
+  background:var(--txt);color:var(--bg);border-radius:var(--r-xl);
+  padding:64px 32px;text-align:center;margin:0 auto;
+}
+.cta-final h2{color:var(--bg);margin-bottom:14px}
+.cta-final p{color:color-mix(in srgb,var(--bg) 66%,transparent);font-size:17px;margin-bottom:28px;
+  max-width:52ch;margin-left:auto;margin-right:auto}
+.cta-final .btn-primary{background:var(--bg);color:var(--txt)}
+
+/* ---------- FOOTER ---------- */
+footer{padding:56px 0 40px;border-top:1px solid var(--line);margin-top:88px}
+.foot-grid{display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between;margin-bottom:34px}
+.foot-col h4{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt-dim);margin-bottom:13px}
+.foot-col a,.foot-col p{display:block;font-size:13.5px;color:var(--txt-dim);margin-bottom:9px;line-height:1.5}
+.foot-col a:hover{color:var(--txt)}
+.legal{font-size:12px;color:var(--txt-dim);line-height:1.7;border-top:1px solid var(--line);padding-top:24px}
+
+/* ---------- MODALE (simulation) ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:none;place-items:center;padding:24px;
+}
+.overlay.on{display:grid}
+.modal{
+  background:var(--bg-card);border-radius:var(--r-lg);max-width:420px;width:100%;
+  padding:34px 30px;box-shadow:var(--shadow-lg);text-align:center;
+  animation:pop .25s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(8px)}}
+.modal .icon{margin:0 auto 18px}
+.modal h3{font-size:20px;font-weight:600;margin-bottom:10px;letter-spacing:-.02em}
+.modal p{font-size:14.5px;color:var(--txt-dim);line-height:1.6;margin-bottom:22px}
+.modal .row{display:flex;gap:10px}
+.modal .btn{flex:1}
+.sim-tag{
+  display:inline-block;font-size:11px;font-weight:600;letter-spacing:.03em;
+  background:var(--accent-soft);color:var(--accent);padding:5px 12px;border-radius:980px;margin-bottom:16px;
+}
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<nav>
+  <div class="nav-in">
+    <a href="#" class="logo">
+      <span class="logo-mark">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+          <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+          <circle cx="12" cy="10" r="2.4" fill="#fff"/>
+        </svg>
+      </span>
+      Dormant
+    </a>
+    <div class="nav-links">
+      <a href="#produit">Produit</a>
+      <a href="#donnees">Données</a>
+      <a href="#tarifs">Tarifs</a>
+      <a href="#faq">FAQ</a>
+      <a href="lyon.html" class="btn btn-primary btn-sm">Lancer la carte</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header>
+  <div class="wrap">
+    <div class="eyebrow">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Données publiques · Lyon &amp; métropole
+    </div>
+    <h1>Trouvez les biens que tout le monde a oubliés.</h1>
+    <p class="sub">
+      Certains immeubles n'ont pas changé de propriétaire depuis plus de dix ans.
+      Dormant les repère sur une carte, à partir du cadastre et des transactions immobilières officielles.
+    </p>
+    <div class="hero-cta">
+      <a href="lyon.html" class="btn btn-primary">
+        Ouvrir la carte — gratuit
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <a href="#tarifs" class="btn btn-ghost">Voir les offres</a>
+    </div>
+    <p class="hero-note">Sans inscription · Sans carte bancaire</p>
+
+    <!-- Aperçu produit -->
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <span class="mock-url">dormant.app/carte</span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-side">
+          <div class="mock-lbl">Zone</div>
+          <div class="mock-row w85"></div>
+          <div class="mock-row w50"></div>
+          <div class="mock-lbl" style="margin-top:20px">Dormance</div>
+          <div class="mock-row w70"></div>
+          <div class="mock-pill"></div>
+          <div class="mock-lbl" style="margin-top:22px">Légende</div>
+          <div class="mock-legend"><span class="sw" style="background:var(--dormant)"></span>Jamais vendu</div>
+          <div class="mock-legend"><span class="sw" style="background:var(--mid)"></span>5 à 8 ans</div>
+          <div class="mock-legend"><span class="sw" style="background:var(--fresh)"></span>Récent</div>
+        </div>
+        <div class="mock-map">
+          <svg viewBox="0 0 600 390" preserveAspectRatio="xMidYMid slice">
+            <rect width="600" height="390" fill="#eceef0"/>
+            <g stroke="#dcdfe3" stroke-width="9" stroke-linecap="round">
+              <path d="M-20 120 H620"/><path d="M-20 250 H620"/>
+              <path d="M150 -20 V410"/><path d="M370 -20 V410"/>
+              <path d="M-20 40 L620 330" stroke-width="12"/>
+            </g>
+            <g opacity=".92">
+              <rect x="24"  y="140" width="52" height="44" rx="4" fill="#c0392b"/>
+              <rect x="84"  y="140" width="40" height="44" rx="4" fill="#e8a33d"/>
+              <rect x="24"  y="192" width="44" height="42" rx="4" fill="#c0392b"/>
+              <rect x="76"  y="192" width="48" height="42" rx="4" fill="#8e2820"/>
+              <rect x="190" y="140" width="58" height="40" rx="4" fill="#e8a33d"/>
+              <rect x="256" y="140" width="46" height="40" rx="4" fill="#2fa96b"/>
+              <rect x="190" y="188" width="50" height="46" rx="4" fill="#8e2820"/>
+              <rect x="248" y="188" width="54" height="46" rx="4" fill="#c0392b"/>
+              <rect x="410" y="150" width="60" height="48" rx="4" fill="#e8c23d"/>
+              <rect x="478" y="150" width="44" height="48" rx="4" fill="#c0392b"/>
+              <rect x="410" y="206" width="52" height="40" rx="4" fill="#2fa96b"/>
+              <rect x="470" y="206" width="52" height="40" rx="4" fill="#e8a33d"/>
+              <rect x="60"  y="286" width="56" height="44" rx="4" fill="#8e2820"/>
+              <rect x="124" y="286" width="46" height="44" rx="4" fill="#c0392b"/>
+              <rect x="300" y="292" width="58" height="42" rx="4" fill="#e8a33d"/>
+              <rect x="366" y="292" width="48" height="42" rx="4" fill="#c0392b"/>
+              <rect x="470" y="300" width="54" height="44" rx="4" fill="#8e2820"/>
+            </g>
+            <g transform="translate(248,168)">
+              <rect x="0" y="0" width="128" height="54" rx="11" fill="#1d1d1f" opacity=".93"/>
+              <text x="12" y="21" fill="#fff" font-size="12" font-family="-apple-system,sans-serif" font-weight="600">Parcelle BI0199</text>
+              <text x="12" y="39" fill="#a8a8ad" font-size="10.5" font-family="-apple-system,sans-serif">Jamais vendue depuis 2014</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= PRODUIT ================= -->
+<section id="produit">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Le signal que personne ne regarde</h2>
+      <p>Les annonces montrent ce qui est à vendre. Dormant montre ce qui ne l'est pas — depuis très longtemps.</p>
+    </div>
+    <div class="grid3">
+      <div class="card">
+        <div class="icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+        </div>
+        <h3>Chaque parcelle, cliquable</h3>
+        <p>Le cadastre complet s'affiche sur la carte. Un clic ouvre la fiche : référence, surface, commune, et tout l'historique des ventes.</p>
+      </div>
+      <div class="card">
+        <div class="icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+          </svg>
+        </div>
+        <h3>Filtre de dormance</h3>
+        <p>Affichez uniquement les biens sans vente depuis 2, 5, 10 ans — ou ceux qui n'ont jamais été vendus depuis l'ouverture des données.</p>
+      </div>
+      <div class="card">
+        <div class="icon">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/>
+          </svg>
+        </div>
+        <h3>Prix réels, pas estimés</h3>
+        <p>Les montants viennent des actes notariés publiés par l'État. Ce sont des transactions réelles, pas des estimations d'algorithme.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ÉTAPES ================= -->
+<section class="sec-soft">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Trois clics</h2>
+      <p>Aucune installation, aucun compte à créer pour commencer.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3>Choisissez un quartier</h3>
+        <p>Sélectionnez un arrondissement ou cherchez une adresse précise, puis zoomez sur la zone qui vous intéresse.</p>
+      </div>
+      <div class="step">
+        <h3>Réglez le filtre</h3>
+        <p>Définissez l'ancienneté minimale de la dernière vente. La carte se recolore instantanément.</p>
+      </div>
+      <div class="step">
+        <h3>Explorez les fiches</h3>
+        <p>Cliquez une parcelle rouge : vous voyez son historique complet et un lien direct pour l'observer en Street View.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DONNÉES ================= -->
+<section id="donnees">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Des sources officielles, vérifiables</h2>
+      <p>Aucune donnée inventée. Tout provient de fichiers publics de l'État, que vous pouvez consulter vous-même.</p>
+    </div>
+    <div class="grid3">
+      <div class="card">
+        <h3>Cadastre PARCELLAIRE_EXPRESS</h3>
+        <p>Le découpage officiel des parcelles, publié par l'IGN sur la Géoplateforme. C'est la géométrie exacte de chaque bien.</p>
+      </div>
+      <div class="card">
+        <h3>DVF — Valeurs Foncières</h3>
+        <p>Les mutations immobilières issues des actes notariés, publiées par la DGFiP et Etalab. Millésimes 2014 à 2025.</p>
+      </div>
+      <div class="card">
+        <h3>Base Adresse Nationale</h3>
+        <p>Le référentiel national des adresses, utilisé pour retrouver instantanément n'importe quel point de la ville.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TARIFS ================= -->
+<section id="tarifs" class="sec-soft">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Des offres simples</h2>
+      <p>Commencez gratuitement. Passez à l'échelle quand vous en avez besoin.</p>
+    </div>
+    <div class="plans">
+
+      <div class="plan">
+        <div class="plan-name">Découverte</div>
+        <div class="plan-desc">Pour explorer la ville et comprendre l'outil.</div>
+        <div class="price"><span class="amt">0 €</span><span class="per">/ mois</span></div>
+        <a href="lyon.html" class="btn btn-primary">Lancer la carte</a>
+        <ul class="feats">
+          <li><span class="check">✓</span><span>Les <b>9 arrondissements</b> de Lyon + Villeurbanne</span></li>
+          <li><span class="check">✓</span><span>Cadastre complet et fiches parcelles</span></li>
+          <li><span class="check">✓</span><span>Historique des ventes <b>2014 → 2025</b></span></li>
+          <li><span class="check">✓</span><span>Filtre de dormance</span></li>
+          <li><span class="check">✓</span><span>Recherche d'adresse</span></li>
+        </ul>
+      </div>
+
+      <div class="plan featured">
+        <span class="badge">Le plus choisi</span>
+        <div class="plan-name">Pro</div>
+        <div class="plan-desc">Pour les chasseurs de biens et marchands de listes.</div>
+        <div class="price"><span class="amt">39 €</span><span class="per">/ mois</span></div>
+        <button class="btn btn-primary" data-plan="Pro" data-price="39 € / mois">Choisir Pro</button>
+        <ul class="feats">
+          <li><span class="check">✓</span><span>Tout le forfait Découverte</span></li>
+          <li><span class="check">✓</span><span><b>Toute la métropole</b> de Lyon — 59 communes</span></li>
+          <li><span class="check">✓</span><span><b>Export CSV</b> des parcelles filtrées</span></li>
+          <li><span class="check">✓</span><span>Couche <b>logements vacants</b> (LOVAC)</span></li>
+          <li><span class="check">✓</span><span>Alertes e-mail sur zone surveillée</span></li>
+          <li><span class="check">✓</span><span>Historique DVF illimité par parcelle</span></li>
+        </ul>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">Agence</div>
+        <div class="plan-desc">Pour les équipes et les foncières.</div>
+        <div class="price"><span class="amt">129 €</span><span class="per">/ mois</span></div>
+        <button class="btn btn-ghost" data-plan="Agence" data-price="129 € / mois">Choisir Agence</button>
+        <ul class="feats">
+          <li><span class="check">✓</span><span>Tout le forfait Pro</span></li>
+          <li><span class="check">✓</span><span><b>Copropriétés dégradées</b> — plans de sauvegarde</span></li>
+          <li><span class="check">✓</span><span><b>5 utilisateurs</b> inclus</span></li>
+          <li><span class="check">✓</span><span>Accès <b>API</b> et intégrations</span></li>
+          <li><span class="check">✓</span><span>Villes supplémentaires à la demande</span></li>
+          <li><span class="check">✓</span><span>Support prioritaire</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Questions fréquentes</h2>
+    </div>
+    <div class="faq">
+      <details open>
+        <summary>« Dormant » veut-il dire « abandonné » ?</summary>
+        <p>Non, et c'est important. Il n'existe aucun registre public listant les biens abandonnés parcelle par parcelle — c'est une notion juridique gérée par les communes et les notaires. Dormant signale les biens <b>sans mutation enregistrée</b> depuis longtemps. C'est un indice sérieux, pas une preuve : un bien peut être occupé depuis trente ans par la même famille, ou appartenir à une collectivité.</p>
+      </details>
+      <details>
+        <summary>D'où viennent exactement les données ?</summary>
+        <p>Du cadastre de l'IGN pour la géométrie des parcelles, et du fichier DVF de la DGFiP (diffusé par Etalab) pour les transactions. Ces jeux sont publics et gratuits. Nous ne les modifions pas : nous les croisons par référence cadastrale et nous les affichons.</p>
+      </details>
+      <details>
+        <summary>Pourquoi les données s'arrêtent-elles à 2014 ?</summary>
+        <p>Parce que la publication en open data des valeurs foncières commence à cette date. Un bien « jamais vendu depuis 2014 » n'a donc pas changé de main depuis au moins onze ans — mais il peut dormir depuis bien plus longtemps encore.</p>
+      </details>
+      <details>
+        <summary>Puis-je connaître le nom du propriétaire ?</summary>
+        <p>Non. Les données de propriété nominatives ne sont pas publiques, et Dormant ne les affiche pas. L'outil travaille uniquement sur des parcelles et des transactions anonymisées, conformément à la diffusion officielle.</p>
+      </details>
+      <details>
+        <summary>Le forfait gratuit est-il limité dans le temps ?</summary>
+        <p>Non. L'accès à Lyon et Villeurbanne reste gratuit, sans compte ni carte bancaire. Les forfaits payants ajoutent la couverture métropolitaine, l'export et les couches complémentaires.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section>
+  <div class="wrap">
+    <div class="cta-final">
+      <h2>La carte est ouverte.</h2>
+      <p>Choisissez un quartier, réglez le filtre, et voyez ce qui dort depuis dix ans.</p>
+      <a href="lyon.html" class="btn btn-primary">Explorer Lyon maintenant</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <a href="#" class="logo" style="margin-bottom:12px">
+          <span class="logo-mark">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+              <circle cx="12" cy="10" r="2.4" fill="#fff"/>
+            </svg>
+          </span>
+          Dormant
+        </a>
+        <p style="max-width:26ch">Le patrimoine immobilier oublié, rendu visible.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produit</h4>
+        <a href="lyon.html">La carte</a>
+        <a href="#tarifs">Tarifs</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="foot-col">
+        <h4>Données</h4>
+        <a href="https://geoservices.ign.fr/parcellaire-express-pci" target="_blank" rel="noopener">Cadastre IGN</a>
+        <a href="https://files.data.gouv.fr/geo-dvf/" target="_blank" rel="noopener">DVF — Etalab</a>
+        <a href="https://adresse.data.gouv.fr/" target="_blank" rel="noopener">Base Adresse Nationale</a>
+      </div>
+      <div class="foot-col">
+        <h4>Cartographie</h4>
+        <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+        <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>
+      </div>
+    </div>
+    <p class="legal">
+      <b>Démonstration.</b> Les forfaits payants ne sont pas commercialisés : aucun paiement n'est encaissé et
+      les fonctionnalités associées sont présentées à titre d'illustration. Le forfait gratuit, lui, est pleinement fonctionnel.<br><br>
+      Dormant est un outil d'exploration de données publiques. Il ne constitue ni un conseil en investissement,
+      ni une information juridique sur le statut d'un bien. Les données de propriété nominatives ne sont pas
+      diffusées. © contributeurs OpenStreetMap, IGN, Etalab / DGFiP.
+    </p>
+  </div>
+</footer>
+
+<!-- ================= MODALE SIMULATION ================= -->
+<div class="overlay" id="ov">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <div class="icon" style="width:52px;height:52px;border-radius:16px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round">
+        <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>
+      </svg>
+    </div>
+    <span class="sim-tag">SIMULATION</span>
+    <h3 id="mt">Forfait <span id="m-plan">Pro</span></h3>
+    <p>
+      Le paiement n'est pas activé sur cette démonstration — <b id="m-price">39 € / mois</b> n'est pas encaissé
+      et aucune donnée bancaire n'est demandée.<br><br>
+      Le forfait <b>Découverte</b> est en revanche complet et immédiatement utilisable sur Lyon.
+    </p>
+    <div class="row">
+      <button class="btn btn-ghost" id="m-close">Fermer</button>
+      <a href="lyon.html" class="btn btn-primary">Utiliser le gratuit</a>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  var ov = document.getElementById("ov");
+  function open(plan, price){
+    document.getElementById("m-plan").textContent  = plan;
+    document.getElementById("m-price").textContent = price;
+    ov.classList.add("on");
+    document.body.style.overflow = "hidden";
+  }
+  function close(){
+    ov.classList.remove("on");
+    document.body.style.overflow = "";
+  }
+  document.querySelectorAll("[data-plan]").forEach(function(b){
+    b.addEventListener("click", function(){
+      open(b.getAttribute("data-plan"), b.getAttribute("data-price"));
+    });
+  });
+  document.getElementById("m-close").addEventListener("click", close);
+  ov.addEventListener("click", function(e){ if(e.target === ov) close(); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") close(); });
+})();
+</script>
+</body>
+</html>

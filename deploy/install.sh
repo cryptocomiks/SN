@@ -40,7 +40,8 @@ apt-get install -y -qq nginx
 
 echo "==> Copie du site vers ${WEB_ROOT}"
 mkdir -p "${WEB_ROOT}" /var/cache/nginx/lyon
-cp "${SRC_DIR}/lyon.html" "${WEB_ROOT}/"
+cp "${SRC_DIR}/lyon.html"    "${WEB_ROOT}/"
+cp "${SRC_DIR}/landing.html" "${WEB_ROOT}/"
 
 # --- Leaflet hébergé en local : indispensable car les bloqueurs (Brave Shields,
 #     uBlock…) empêchent souvent le chargement depuis un CDN tiers. ---
