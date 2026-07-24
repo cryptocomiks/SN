@@ -222,7 +222,9 @@ window.addEventListener("error", function(e){
   // "Script error." sans fichier ni ligne = erreur opaque venue d'un script
   // tiers (extension, Shields Brave…). Ce n'est pas notre code : on l'ignore,
   // sinon on alarme l'utilisateur pour quelque chose d'inactionnable.
-  if(!e.filename && !e.lineno) return;
+  // On ne signale que les erreurs venant de notre propre page. Les extensions
+  // (portefeuilles crypto : window.ethereum…) polluent sinon l'affichage.
+  if(!e.filename || e.filename.indexOf(location.origin) !== 0) return;
   fatal("Erreur JavaScript", (e.message||"") + " — " + String(e.filename||"").split("/").pop() + ":" + (e.lineno||""));
 });
 
@@ -454,11 +456,18 @@ function fixCoordOrder(fc){
 /* =========================================================================
    RENDU
    ========================================================================= */
+/* Clé de jointure avec DVF. L'IGN fournit `idu` (ex. "69385000AS0032"), déjà au
+   format id_parcelle de DVF : on l'utilise en priorité.
+   Repli : à Lyon, code_com vaut 123 (commune globale) alors que DVF indexe par
+   arrondissement (69385) porté par code_insee / code_arr — utiliser code_com
+   fabriquerait une clé qui ne correspond à rien. */
 function parcelKey(p){
-  return p.idu || p.id_parcelle ||
-    (p.code_dep&&p.code_com&&p.section&&p.numero
-      ? `${p.code_dep}${String(p.code_com).padStart(3,"0")}${(p.com_abs||"000")}${String(p.section).padStart(2,"0")}${String(p.numero).padStart(4,"0")}`
-      : null);
+  if(p.idu) return p.idu;
+  if(p.id_parcelle) return p.id_parcelle;
+  const com = p.code_insee || (p.code_dep && p.code_arr ? `${p.code_dep}${p.code_arr}` : null)
+            || (p.code_dep && p.code_com ? `${p.code_dep}${String(p.code_com).padStart(3,"0")}` : null);
+  if(!com || !p.section || !p.numero) return null;
+  return `${com}${p.com_abs||"000"}${String(p.section).padStart(2,"0")}${String(p.numero).padStart(4,"0")}`;
 }
 function dormancyYears(feat){
   if(!dvfLoadedInsee) return {never:false, years:null, rec:null}; // DVF non chargé -> inconnu
