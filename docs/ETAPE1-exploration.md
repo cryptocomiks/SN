@@ -22,6 +22,30 @@
 - **BAN** : `https://api-adresse.data.gouv.fr/search/` (unitaire) et
   `POST /search/csv/` (masse) pour le géocodage/jointure.
 
+## ✅ Source 3 — BAN : VÉRIFIÉE sur le VPS (24/07/2026)
+
+Sortie réelle de `--only ban`, deux requêtes lyonnaises :
+
+- `properties` contient **17 champs** :
+  `label, score, id, banId, name, postcode, citycode, x, y, city, district,
+  context, type, importance, depcode, street, _type`
+- **`banId`** = UUID stable (ex. `0a51ba1a-42bd-4b8a-9287-c215bedf6574`)
+  → **c'est notre clé de jointure** entre DPE et RNIC.
+- **`id`** = identifiant hiérarchique (ex. `69382_0805`) — utile en secours.
+- **`depcode`** = `"69"` → filtre département natif, exactement ce qu'il nous
+  faut pour rester paramétrable.
+- `citycode` = code INSEE (`69383` = Lyon 3e), `district` = arrondissement.
+- `geometry.coordinates` = `[lon, lat]` en WGS84 (ex. `[4.831662, 45.757597]`) ;
+  `x`/`y` sont en Lambert-93 — **ne pas confondre**, PostGIS attend le WGS84.
+
+⚠️ **Point de vigilance pour la jointure** : la requête
+`"20 avenue de Saxe 69003 Lyon"` a renvoyé `type: "street"` et non
+`housenumber`. Un repli au niveau rue fait perdre la précision au numéro et
+risque de fusionner plusieurs immeubles distincts. → À l'étape 2, on
+**conserve `type` et `score`**, et on ne joint automatiquement que les
+`housenumber` avec un score suffisant ; le reste part en file « ambigus »
+pour revue, comme demandé.
+
 ## Comment débloquer — lance le sondage sur ton VPS
 Le script est **read-only**, **stdlib pure** (aucun `pip`), paramétrable par département.
 

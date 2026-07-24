@@ -187,13 +187,136 @@ def explore_ban():
           "(multipart, jusqu'à ~50k lignes/fichier) — à câbler à l'étape 2.")
 
 
+# --------------------------------------------------------------------------
+# Mode COMPACT — sortie dense, lisible en 1 ou 2 captures d'écran.
+# Aucune supposition : on lit le schéma réel, puis on choisit les champs
+# à profiler par correspondance de motifs sur les clés RÉELLES.
+# --------------------------------------------------------------------------
+INTERESTING = [
+    "chauffage", "dpe", "ges", "construction", "latitude", "longitude",
+    "surface", "adresse", "postal", "commune", "ban", "departement",
+    "département", "type_batiment", "type_bâtiment", "logement",
+]
+
+
+def pick_fields(keys, patterns):
+    out = []
+    for k in keys:
+        kl = k.lower()
+        if any(p in kl for p in patterns):
+            out.append(k)
+    return out
+
+
+def compact_ademe(dep):
+    hr(f"1. ADEME (compact) — dep {dep}")
+    try:
+        _, meta = http_get_json(ADEME_BASE)
+    except Exception as e:
+        print("ERREUR meta:", repr(e))
+        return
+    schema = meta.get("schema", [])
+    keys = [f.get("key") for f in schema if f.get("key")]
+    print(f"count_total={meta.get('count')}  nb_colonnes={len(keys)}")
+    print("\n--- CLÉS RÉELLES ---")
+    print(" | ".join(keys))
+
+    # Trouver le champ département RÉEL (on teste, on ne devine pas)
+    dep_fields = pick_fields(keys, ["departement", "département"])
+    print(f"\n--- CHAMPS 'département' TROUVÉS: {dep_fields} ---")
+    working = None
+    for f in dep_fields:
+        for mode, params in (
+            ("param", {"size": 1, f: dep}),
+            ("qs", {"size": 1, "qs": f'"{f}":{dep}'}),
+        ):
+            try:
+                url = f"{ADEME_BASE}/lines?" + urllib.parse.urlencode(params)
+                _, r = http_get_json(url)
+                tot = r.get("total")
+                print(f"  [{mode}] {f} -> total={tot}")
+                if tot and working is None:
+                    working = (f, mode)
+            except Exception as e:
+                print(f"  [{mode}] {f} -> ERR {type(e).__name__}")
+    print("FILTRE RETENU:", working)
+
+    # Profil des valeurs sur un échantillon réel du département
+    if not working:
+        print("Aucun filtre département fonctionnel — voir ci-dessus.")
+        return
+    f, mode = working
+    params = {"size": 200} | ({f: dep} if mode == "param" else {"qs": f'"{f}":{dep}'})
+    try:
+        url = f"{ADEME_BASE}/lines?" + urllib.parse.urlencode(params)
+        _, r = http_get_json(url)
+        rows = r.get("results", [])
+    except Exception as e:
+        print("ERREUR échantillon:", repr(e))
+        return
+    print(f"\n--- PROFIL SUR {len(rows)} LIGNES RÉELLES (dep {dep}) ---")
+    for k in pick_fields(keys, INTERESTING):
+        vals = [row.get(k) for row in rows if row.get(k) not in (None, "")]
+        if not vals:
+            continue
+        uniq = {}
+        for v in vals:
+            uniq[str(v)[:38]] = uniq.get(str(v)[:38], 0) + 1
+        top = sorted(uniq.items(), key=lambda x: -x[1])[:6]
+        rendu = ", ".join(f"{v}({n})" for v, n in top)
+        print(f"  {k[:44]:<44} n={len(vals):<4} {rendu[:110]}")
+
+
+def compact_rnic():
+    hr("2. RNIC (compact)")
+    try:
+        _, ds = http_get_json(f"{DATAGOUV_API}/{RNIC_SLUG}/")
+    except Exception as e:
+        print("ERREUR:", repr(e))
+        return
+    resources = ds.get("resources", [])
+    print(f"{ds.get('title')} — {len(resources)} ressources")
+    csv_url = None
+    for r in resources:
+        fmt = (r.get("format") or "").lower()
+        print(f"  [{fmt:<5}] {(r.get('title') or '')[:52]:<52} {r.get('url')}")
+        if csv_url is None and fmt in ("csv", "txt"):
+            csv_url = r.get("url")
+    if not csv_url:
+        return
+    try:
+        req = urllib.request.Request(csv_url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            raw = resp.read(65536)
+        lines = raw.decode("utf-8", errors="replace").splitlines()
+        header = lines[0] if lines else ""
+        sep = ";" if header.count(";") >= header.count(",") else ","
+        cols = [c.strip() for c in header.split(sep)]
+        print(f"\nsep='{sep}'  nb_colonnes={len(cols)}")
+        print("--- COLONNES RÉELLES ---")
+        print(" | ".join(cols))
+        print("\n--- 2 LIGNES ---")
+        for ln in lines[1:3]:
+            print(" ", ln[:400])
+    except Exception as e:
+        print("ERREUR CSV:", repr(e))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dep", default="69", help="code département (défaut 69)")
     ap.add_argument("--only", choices=["ademe", "rnic", "ban"], help="une seule source")
+    ap.add_argument("--compact", action="store_true", help="sortie dense")
     args = ap.parse_args()
 
     print(f"CoproScan — sondage des sources | département = {args.dep}")
+    if args.compact:
+        if args.only in (None, "ademe"):
+            compact_ademe(args.dep)
+        if args.only in (None, "rnic"):
+            compact_rnic()
+        print("\n=== FIN (compact) ===")
+        return
     if args.only in (None, "ademe"):
         explore_ademe(args.dep)
     if args.only in (None, "rnic"):
