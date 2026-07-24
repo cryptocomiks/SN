@@ -52,7 +52,10 @@ def show_keys(obj, label="Champs"):
 # --------------------------------------------------------------------------
 # 1) ADEME — DPE logements existants (data-fair)
 # --------------------------------------------------------------------------
-ADEME_DATASET = "dpe-v2-logements-existants"
+# Id RÉEL confirmé via le catalogue data-fair le 24/07/2026 :
+# "DPE Logements existants (depuis juillet 2021)" — 15 280 141 lignes.
+# (L'id de la doc web, "dpe-v2-logements-existants", renvoie 404.)
+ADEME_DATASET = "meg-83tjwtg8dyz4vv7h1dqe"
 ADEME_BASE = f"https://data.ademe.fr/data-fair/api/v1/datasets/{ADEME_DATASET}"
 
 
@@ -106,7 +109,10 @@ def explore_ademe(dep):
 # --------------------------------------------------------------------------
 # 2) RNIC — Registre National d'Immatriculation des Copropriétés (ANAH)
 # --------------------------------------------------------------------------
+# Résolu dynamiquement via le catalogue (le slug exact n'est pas devinable :
+# c'est "...-dimmatriculation-..." et non "...-d-immatriculation-...").
 RNIC_SLUG = "registre-national-d-immatriculation-des-coproprietes"
+RNIC_SLUG_EXPLICIT = None
 DATAGOUV_API = "https://www.data.gouv.fr/api/1/datasets"
 
 
@@ -228,7 +234,7 @@ def compact_ademe(dep):
     for f in dep_fields:
         for mode, params in (
             ("param", {"size": 1, f: dep}),
-            ("qs", {"size": 1, "qs": f'"{f}":{dep}'}),
+            ("qs", {"size": 1, "qs": f"{f}:{dep}"}),
         ):
             try:
                 url = f"{ADEME_BASE}/lines?" + urllib.parse.urlencode(params)
@@ -267,23 +273,57 @@ def compact_ademe(dep):
         print(f"  {k[:44]:<44} n={len(vals):<4} {rendu[:110]}")
 
 
+def resolve_rnic(explicit=None):
+    """Retourne le dataset RNIC. Si aucun slug explicite ne marche, on le
+    RÉSOUT via le catalogue plutôt que de le deviner."""
+    if explicit:
+        try:
+            _, ds = http_get_json(f"{DATAGOUV_API}/{explicit}/")
+            print(f"slug explicite OK: {explicit}")
+            return ds
+        except Exception as e:
+            print(f"slug explicite {explicit!r} -> {e!r} ; on interroge le catalogue")
+    url = "https://www.data.gouv.fr/api/1/datasets/?" + urllib.parse.urlencode(
+        {"q": "registre national immatriculation copropriétés", "page_size": 5}
+    )
+    _, res = http_get_json(url)
+    for d in res.get("data", []):
+        org = (d.get("organization") or {}).get("name", "")
+        print(f"candidat: slug={d.get('slug')}  org={org}")
+        if "anah" in org.lower() or "habitat" in org.lower() or "agence nationale" in org.lower():
+            print(f"-> RETENU (éditeur ANAH): {d.get('slug')}")
+            return d
+    data = res.get("data", [])
+    if data:
+        print(f"-> RETENU (1er résultat): {data[0].get('slug')}")
+        return data[0]
+    raise RuntimeError("aucun jeu RNIC trouvé dans le catalogue")
+
+
 def compact_rnic():
     hr("2. RNIC (compact)")
     try:
-        _, ds = http_get_json(f"{DATAGOUV_API}/{RNIC_SLUG}/")
+        ds = resolve_rnic(RNIC_SLUG_EXPLICIT)
     except Exception as e:
         print("ERREUR:", repr(e))
         return
     resources = ds.get("resources", [])
-    print(f"{ds.get('title')} — {len(resources)} ressources")
+    print(f"\n{ds.get('title')}")
+    print(f"slug COMPLET: {ds.get('slug')}")
+    print(f"{len(resources)} ressources:")
     csv_url = None
     for r in resources:
         fmt = (r.get("format") or "").lower()
-        print(f"  [{fmt:<5}] {(r.get('title') or '')[:52]:<52} {r.get('url')}")
+        size = r.get("filesize")
+        mb = f"{size/1e6:.0f}Mo" if isinstance(size, int) else "?"
+        print(f"  [{fmt:<5}] {mb:>7}  {(r.get('title') or '')[:64]}")
         if csv_url is None and fmt in ("csv", "txt"):
             csv_url = r.get("url")
+            csv_title = (r.get("title") or "")[:64]
     if not csv_url:
+        print("Aucune ressource CSV — voir la liste ci-dessus.")
         return
+    print(f"\n>>> CSV analysé: {csv_title}\n    {csv_url}")
     try:
         req = urllib.request.Request(csv_url, headers={"User-Agent": UA})
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
@@ -323,7 +363,7 @@ def discover():
         for d in rows:
             did = d.get("id") or d.get("slug")
             cnt = d.get("count")
-            print(f"    {str(did)[:42]:<42} count={str(cnt):<10} {str(d.get('title'))[:52]}")
+            print(f"    {str(did):<26} count={str(cnt):<10} {str(d.get('title'))[:52]}")
         if rows:
             break
 
@@ -346,7 +386,7 @@ def discover():
         for d in rows:
             org = (d.get("organization") or {}).get("name", "")
             nres = len(d.get("resources", []))
-            print(f"    slug={str(d.get('slug'))[:48]:<48} res={nres:<3} org={str(org)[:22]:<22} {str(d.get('title'))[:44]}")
+            print(f"    slug={d.get('slug')}\n         res={nres:<3} org={str(org)[:30]:<30} {str(d.get('title'))[:40]}")
         if rows:
             break
     print("\n>>> Relance ensuite avec les VRAIS ids, ex.:")
@@ -355,7 +395,7 @@ def discover():
 
 
 def main():
-    global ADEME_DATASET, ADEME_BASE, RNIC_SLUG
+    global ADEME_DATASET, ADEME_BASE, RNIC_SLUG, RNIC_SLUG_EXPLICIT
     ap = argparse.ArgumentParser()
     ap.add_argument("--dep", default="69", help="code département (défaut 69)")
     ap.add_argument("--discover", action="store_true", help="lister les vrais ids via les catalogues")
@@ -370,6 +410,7 @@ def main():
         ADEME_BASE = f"https://data.ademe.fr/data-fair/api/v1/datasets/{ADEME_DATASET}"
     if args.rnic_slug:
         RNIC_SLUG = args.rnic_slug
+        RNIC_SLUG_EXPLICIT = args.rnic_slug
 
     print(f"CoproScan — sondage des sources | département = {args.dep}")
     if args.discover:

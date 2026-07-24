@@ -14,6 +14,29 @@
 | RNIC (ANAH) | `www.data.gouv.fr` | ❌ 403 |
 | BAN | `api-adresse.data.gouv.fr` | ❌ 403 |
 
+## ✅ Identifiants RÉELS (résolus via les catalogues, 24/07/2026)
+
+Les identifiants tirés de la doc web renvoyaient **404**. Résolus via
+`--discover` :
+
+| Source | Supposé (faux) | **Réel** |
+|---|---|---|
+| ADEME DPE existants | `dpe-v2-logements-existants` | **`meg-83tjwtg8dyz4vv7h1dqe`** |
+| RNIC | `...-d-immatriculation-...` | `...-**di**mmatriculation-...` (résolu dynamiquement) |
+
+Catalogue ADEME — jeux voisins à ne pas confondre :
+
+| id | lignes | titre |
+|---|---|---|
+| **`meg-83tjwtg8dyz4vv7h1dqe`** | **15 280 141** | **DPE Logements existants (depuis juillet 2021)** ← V1 |
+| `g3cgx7jb3cmys5voxz1mrm22` | 1 404 131 | DPE Logements neufs (depuis juillet 2021) |
+| `dpe-france` | 10 728 950 | DPE Logements (avant juillet 2021) — complément possible, hors V1 |
+| `ync2epx48x9azbdnggbygqp0` | 3 114 110 | Audits énergétiques logements existants |
+
+⚠️ Les ids ADEME sont **opaques et générés** (`meg-83tj…`) : ils ne sont pas
+devinables et peuvent changer si le jeu est republié. Le script les
+re-résout via `--discover` plutôt que de les coder en dur aveuglément.
+
 ## Endpoints ciblés (documentés, à vérifier sur pièces)
 - **ADEME DPE existants** : `https://data.ademe.fr/data-fair/api/v1/datasets/dpe-v2-logements-existants/lines`
   — pagination curseur (`after`/`next`), 10 000 lignes/page, sans clé, licence ODbL.
