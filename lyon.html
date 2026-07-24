@@ -6,11 +6,18 @@
 <title>Lyon — Biens dormants & non vendus · Carte</title>
 <meta name="description" content="Carte des biens immobiliers dormants à Lyon : parcelles cadastrales sans mutation récente, à partir des données publiques (DVF, cadastre IGN).">
 
-<!-- Leaflet (carte gratuite, open-source) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJ0RKM4ZS4YIMPjzBFH3lLTLK0YuI=" crossorigin=""></script>
+<!-- Leaflet (carte gratuite, open-source).
+     Priorité au fichier servi localement par le VPS : aucune dépendance CDN,
+     donc insensible aux bloqueurs de pub / Shields Brave. Repli sur le CDN
+     si le site est ouvert sans le dossier vendor/ (GitHub Pages, fichier local). -->
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+  if (typeof L === "undefined") {
+    document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">');
+    document.write('<scr' + 'ipt src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/scr' + 'ipt>');
+  }
+</script>
 
 <style>
   :root{
@@ -190,6 +197,31 @@
 
 <script>
 "use strict";
+/* =========================================================================
+   DIAGNOSTIC — pas de console sur mobile : on affiche les erreurs en page
+   ========================================================================= */
+let _fatalShown = false;
+function fatal(msg, detail){
+  if(_fatalShown) return; _fatalShown = true;
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;z-index:9999;left:50%;top:14px;transform:translateX(-50%);"
+    + "max-width:min(560px,92vw);background:#7f1d1d;color:#fff;padding:14px 18px;border-radius:10px;"
+    + "font:13px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6)";
+  d.innerHTML = "<b>"+msg+"</b>" + (detail ? "<br><span style='opacity:.9;font-size:12px'>"+detail+"</span>" : "");
+  (document.body||document.documentElement).appendChild(d);
+}
+window.addEventListener("error", function(e){
+  fatal("Erreur JavaScript", (e.message||"") + " — " + String(e.filename||"").split("/").pop() + ":" + (e.lineno||""));
+});
+
+if (typeof L === "undefined") {
+  fatal("Leaflet n'a pas pu être chargé — la carte ne peut pas s'afficher.",
+        "Causes probables : un bloqueur (Brave Shields / uBlock) empêche le chargement, ou le dossier "
+      + "<code>vendor/leaflet/</code> est absent du serveur. Solution : relancez "
+      + "<code>sudo bash deploy/install.sh</code> sur le VPS pour héberger Leaflet en local.");
+  throw new Error("Leaflet indisponible");
+}
+
 /* =========================================================================
    CONFIG — sources de données publiques (gratuites, sans clé)
    ========================================================================= */
