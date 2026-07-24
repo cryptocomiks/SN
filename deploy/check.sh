@@ -15,7 +15,8 @@ test_url(){
   local label="$1" url="$2" needle="${3:-}"
   local tmp code
   tmp="$(mktemp)"
-  code="$(curl -s -o "$tmp" -w '%{http_code}' --max-time 45 "$url" 2>/dev/null)"
+  # -L : suivre les redirections (files.data.gouv.fr renvoie des 302)
+  code="$(curl -sL -o "$tmp" -w '%{http_code}' --max-time 45 "$url" 2>/dev/null)"
   local size; size="$(wc -c <"$tmp" | tr -d ' ')"
   if [ "$code" = "200" ]; then
     if [ -n "$needle" ] && ! grep -qi -- "$needle" "$tmp"; then
