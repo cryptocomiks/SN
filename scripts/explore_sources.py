@@ -302,14 +302,79 @@ def compact_rnic():
         print("ERREUR CSV:", repr(e))
 
 
+# --------------------------------------------------------------------------
+# Mode DÉCOUVERTE — on interroge les CATALOGUES pour lire les vrais
+# identifiants de jeux de données. Aucun slug deviné : c'est la plateforme
+# qui nous les donne.
+# --------------------------------------------------------------------------
+def discover():
+    hr("DÉCOUVERTE — catalogue ADEME (data-fair)")
+    for q in ["dpe logements existants", "dpe existant", "dpe"]:
+        url = "https://data.ademe.fr/data-fair/api/v1/datasets?" + urllib.parse.urlencode(
+            {"q": q, "size": 15}
+        )
+        try:
+            _, res = http_get_json(url)
+        except Exception as e:
+            print(f"  q={q!r} -> ERREUR {e!r}")
+            continue
+        rows = res.get("results", res.get("data", []))
+        print(f"\n  q={q!r} -> {res.get('count', len(rows))} jeux")
+        for d in rows:
+            did = d.get("id") or d.get("slug")
+            cnt = d.get("count")
+            print(f"    {str(did)[:42]:<42} count={str(cnt):<10} {str(d.get('title'))[:52]}")
+        if rows:
+            break
+
+    hr("DÉCOUVERTE — catalogue data.gouv.fr (RNIC / copropriétés)")
+    for q in [
+        "registre national immatriculation copropriétés",
+        "immatriculation copropriétés",
+        "copropriétés",
+    ]:
+        url = "https://www.data.gouv.fr/api/1/datasets/?" + urllib.parse.urlencode(
+            {"q": q, "page_size": 12}
+        )
+        try:
+            _, res = http_get_json(url)
+        except Exception as e:
+            print(f"  q={q!r} -> ERREUR {e!r}")
+            continue
+        rows = res.get("data", [])
+        print(f"\n  q={q!r} -> {res.get('total')} jeux")
+        for d in rows:
+            org = (d.get("organization") or {}).get("name", "")
+            nres = len(d.get("resources", []))
+            print(f"    slug={str(d.get('slug'))[:48]:<48} res={nres:<3} org={str(org)[:22]:<22} {str(d.get('title'))[:44]}")
+        if rows:
+            break
+    print("\n>>> Relance ensuite avec les VRAIS ids, ex.:")
+    print("    python3 scripts/explore_sources.py --compact --only ademe --dataset <ID>")
+    print("    python3 scripts/explore_sources.py --compact --only rnic  --rnic-slug <SLUG>")
+
+
 def main():
+    global ADEME_DATASET, ADEME_BASE, RNIC_SLUG
     ap = argparse.ArgumentParser()
     ap.add_argument("--dep", default="69", help="code département (défaut 69)")
+    ap.add_argument("--discover", action="store_true", help="lister les vrais ids via les catalogues")
+    ap.add_argument("--dataset", help="id du jeu ADEME (override)")
+    ap.add_argument("--rnic-slug", dest="rnic_slug", help="slug data.gouv.fr du RNIC (override)")
     ap.add_argument("--only", choices=["ademe", "rnic", "ban"], help="une seule source")
     ap.add_argument("--compact", action="store_true", help="sortie dense")
     args = ap.parse_args()
 
+    if args.dataset:
+        ADEME_DATASET = args.dataset
+        ADEME_BASE = f"https://data.ademe.fr/data-fair/api/v1/datasets/{ADEME_DATASET}"
+    if args.rnic_slug:
+        RNIC_SLUG = args.rnic_slug
+
     print(f"CoproScan — sondage des sources | département = {args.dep}")
+    if args.discover:
+        discover()
+        return
     if args.compact:
         if args.only in (None, "ademe"):
             compact_ademe(args.dep)
