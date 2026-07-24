@@ -372,7 +372,7 @@ async function ensureDvf(insee){
       if(mut && !cur.muts[mut]){ cur.muts[mut]=1; cur.count++; }
       if(d && !isNaN(d) && (!cur.last || d>cur.last)) cur.last = d;
       const key = id+"|"+mut;
-      if(cur.records.length < 8 && !seenMutations[key]){
+      if(!seenMutations[key]){
         seenMutations[key] = 1;
         cur.records.push({
           date: ds,
@@ -386,6 +386,16 @@ async function ensureDvf(insee){
       }
       dvfIndex[id] = cur;
     }
+  }
+
+  /* Les millésimes sont parcourus du plus ancien au plus récent : sans tri on
+     conserverait les plus vieilles ventes et la « dernière vente » affichée
+     n'apparaîtrait pas dans l'historique. On trie donc du plus récent au plus
+     ancien avant de ne garder que les 8 dernières. */
+  for(const k in dvfIndex){
+    const r = dvfIndex[k];
+    r.records.sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")));
+    if(r.records.length > 8) r.records = r.records.slice(0,8);
   }
 
   const n = Object.keys(dvfIndex).length;
@@ -598,7 +608,7 @@ function showDetail(feat){
     html+=`<div class="kv"><span>Mutations DVF</span><span>${d.rec.count}</span></div>`;
     if(d.rec.last) html+=`<div class="kv"><span>Dernière vente</span><span>${d.rec.last.toLocaleDateString("fr-FR")}</span></div>`;
     html+=`<div style="margin-top:12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt-dim)">Historique des ventes</div>`;
-    d.rec.records.slice().reverse().forEach(r=>{
+    d.rec.records.forEach(r=>{   // déjà triées du plus récent au plus ancien
       html+=`<div style="border-left:2px solid var(--accent);padding:6px 0 6px 10px;margin-top:8px;font-size:12px">
         <div><b>${r.date? new Date(r.date).toLocaleDateString("fr-FR"):"?"}</b> · ${euro(r.val)}</div>
         <div style="color:var(--txt-dim)">${r.type||"—"}${r.surf?` · ${r.surf} m²`:""}${r.adr?` · ${r.adr}`:""}</div>
@@ -617,6 +627,7 @@ function showDetail(feat){
   $("d-title").textContent = "Parcelle "+(p.section||"")+(p.numero||"");
   $("d-body").innerHTML=html;
   $("detail").style.display="block";
+  $("detail").scrollTop=0;   // sinon le badge de statut reste hors écran
 }
 
 /* =========================================================================
