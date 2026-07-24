@@ -155,6 +155,7 @@
         <span class="chip" id="chip-cad"><span class="dot"></span>Cadastre IGN</span>
         <span class="chip" id="chip-dvf"><span class="dot"></span>DVF</span>
         <span class="chip" id="chip-ban"><span class="dot"></span>Adresses</span>
+        <span class="chip" id="chip-proxy"><span class="dot"></span>mode</span>
       </div>
       <details>
         <summary>Méthodologie & limites</summary>
@@ -206,14 +207,30 @@ const COMMUNES = [
   {insee:"69123", nom:"Lyon (global)",   c:[45.7580,4.8350]}
 ];
 const CURRENT_YEAR = new Date().getFullYear();
+
+/* Reverse-proxy optionnel (VPS) : si /api/health répond "ok", on passe par le
+   proxy nginx local, ce qui supprime toute contrainte CORS et met les réponses
+   en cache. Sinon on attaque les APIs publiques en direct. */
+const PROXY = {on:false, checked:false};
+async function detectProxy(){
+  if(PROXY.checked) return; PROXY.checked=true;
+  if(location.protocol==="file:") return;      // ouverture locale -> pas de proxy
+  try{
+    const r=await fetch("/api/health",{cache:"no-store"});
+    if(r.ok && (await r.text()).trim().toLowerCase().startsWith("ok")) PROXY.on=true;
+  }catch(e){ /* pas de proxy : mode direct */ }
+  setChip("chip-proxy", PROXY.on?"ok":"", PROXY.on?"proxy VPS":"direct");
+}
+
 // DVF : plusieurs URLs candidates (le chemin exact peut évoluer) — on essaie dans l'ordre.
-const DVF_URLS = (insee)=>[
-  `https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}.json`,
-  `https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}/mutations.geojson`
-];
+const DVF_URLS = (insee)=> PROXY.on
+  ? [`/api/dvf/geo-dvf/latest/geojson/communes/69/${insee}.json`,
+     `/api/dvf/geo-dvf/latest/geojson/communes/69/${insee}/mutations.geojson`]
+  : [`https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}.json`,
+     `https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}/mutations.geojson`];
 // Cadastre IGN Géoplateforme (WFS) — CRS:84 = ordre lon,lat (non ambigu)
-const WFS_CADASTRE = "https://data.geopf.fr/wfs/ows";
-const BAN_URL = "https://api-adresse.data.gouv.fr/search/";
+const WFS_CADASTRE = ()=> PROXY.on ? "/api/geopf/wfs/ows" : "https://data.geopf.fr/wfs/ows";
+const BAN_URL      = ()=> PROXY.on ? "/api/ban/search/"   : "https://api-adresse.data.gouv.fr/search/";
 
 /* =========================================================================
    CARTE
@@ -317,7 +334,7 @@ async function loadCadastre(){
     OUTPUTFORMAT:"application/json", SRSNAME:"CRS:84", COUNT:"2000", BBOX:bbox
   });
   setChip("chip-cad","load","cadastre…");
-  const r = await fetch(WFS_CADASTRE+"?"+params.toString(), {mode:"cors"});
+  const r = await fetch(WFS_CADASTRE()+"?"+params.toString(), {mode:"cors"});
   if(!r.ok) throw new Error("WFS "+r.status);
   const data = await r.json();
   fixCoordOrder(data);          // garde-fou ordre lat/lon
@@ -394,6 +411,7 @@ function restyle(){ parcelLayer.setStyle(featureStyle); updateStats(); }
    ORCHESTRATION
    ========================================================================= */
 async function loadView(){
+  await detectProxy();
   const insee=$("commune").value;
   try{ await ensureDvf(insee); }catch(e){ setChip("chip-dvf","err","DVF err"); }
   let data;
@@ -483,9 +501,10 @@ function showDetail(feat){
    ========================================================================= */
 async function geocode(){
   const q=$("search").value.trim(); if(!q) return;
+  await detectProxy();
   setChip("chip-ban","load","recherche…");
   try{
-    const url=BAN_URL+"?q="+encodeURIComponent(q)+"&limit=1&lat=45.758&lon=4.835";
+    const url=BAN_URL()+"?q="+encodeURIComponent(q)+"&limit=1&lat=45.758&lon=4.835";
     const r=await fetch(url,{mode:"cors"}); const j=await r.json();
     if(j.features && j.features.length){
       const c=j.features[0].geometry.coordinates; // lon,lat
@@ -519,7 +538,10 @@ function loadSample(){
 }
 
 /* premier chargement auto quand on arrive assez zoomé */
-map.whenReady(()=>{ setTimeout(()=>{ if(map.getZoom()>=15) loadView(); },400); });
+map.whenReady(()=>{
+  detectProxy();
+  setTimeout(()=>{ if(map.getZoom()>=15) loadView(); },400);
+});
 </script>
 </body>
 </html>
