@@ -174,7 +174,8 @@
         <p><b>« Dormant » = proxy, pas un registre officiel.</b> Il n'existe pas de base publique listant, parcelle par parcelle, les biens « abandonnés » ou « sans maître » (ces catégories sont juridiques et gérées par les communes/notaires).</p>
         <p>On croise donc deux jeux ouverts :</p>
         <p>• <b>Cadastre PARCELLAIRE_EXPRESS</b> (IGN Géoplateforme) → toutes les parcelles.<br>
-        • <b>DVF — Demandes de Valeurs Foncières</b> (Etalab, 2014→aujourd'hui) → dates de vente.</p>
+        • <b>DVF — Demandes de Valeurs Foncières</b> (Etalab) → dates de vente, millésimes
+        2014 à 2025, chargés en CSV et joints à la parcelle par son identifiant cadastral.</p>
         <p>Une parcelle <b>sans aucune mutation DVF depuis 2014</b> n'a pas changé de main depuis ≥ 12 ans : forte présomption de bien détenu de longue date, potentiellement dormant/vacant. Ce n'est pas une preuve d'abandon (héritage, résidence occupée, bien public…).</p>
         <p>Pour confirmer une vacance réelle : recouper avec les fichiers <i>LOVAC / locaux vacants</i> (DGFiP) et l'observation terrain.</p>
       </details>
@@ -265,12 +266,15 @@ async function detectProxy(){
   setChip("chip-proxy", PROXY.on?"ok":"", PROXY.on?"proxy VPS":"direct");
 }
 
-// DVF : plusieurs URLs candidates (le chemin exact peut évoluer) — on essaie dans l'ordre.
-const DVF_URLS = (insee)=> PROXY.on
-  ? [`/api/dvf/geo-dvf/latest/geojson/communes/69/${insee}.json`,
-     `/api/dvf/geo-dvf/latest/geojson/communes/69/${insee}/mutations.geojson`]
-  : [`https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}.json`,
-     `https://files.data.gouv.fr/geo-dvf/latest/geojson/communes/69/${insee}/mutations.geojson`];
+/* DVF est publié UNIQUEMENT en CSV, rangé par année :
+     /geo-dvf/latest/csv/{ANNÉE}/communes/{DEP}/{INSEE}.csv
+   (le dossier geojson/ n'existe pas — vérifié sur la source).
+   files.data.gouv.fr redirige vers un stockage OVH ; en mode proxy on vise
+   directement ce stockage pour éviter une redirection cross-origin. */
+const DVF_YEARS = [2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+const DVF_CSV = (year,insee)=> PROXY.on
+  ? `/api/dvf/latest/csv/${year}/communes/69/${insee}.csv`
+  : `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/69/${insee}.csv`;
 // Cadastre IGN Géoplateforme (WFS) — CRS:84 = ordre lon,lat (non ambigu)
 const WFS_CADASTRE = ()=> PROXY.on ? "/api/geopf/wfs/ows" : "https://data.geopf.fr/wfs/ows";
 const BAN_URL      = ()=> PROXY.on ? "/api/ban/search/"   : "https://api-adresse.data.gouv.fr/search/";
@@ -336,31 +340,79 @@ async function ensureDvf(insee){
   if(dvfLoadedInsee===insee) return;
   setChip("chip-dvf","load","DVF…");
   dvfIndex={}; dvfLoadedInsee=null;
-  let ok=false, data=null;
-  for(const url of DVF_URLS(insee)){
-    try{
-      const r = await fetch(url, {mode:"cors"});
-      if(!r.ok) continue;
-      data = await r.json(); ok=true; break;
-    }catch(err){ /* essaie l'URL suivante */ }
+
+  // Une requête par millésime ; les années absentes renvoient 404 sans gêner.
+  const texts = await Promise.all(DVF_YEARS.map(y =>
+    fetch(DVF_CSV(y,insee), {mode:"cors"})
+      .then(r => r.ok ? r.text() : null)
+      .catch(() => null)
+  ));
+
+  const seenMutations = {};   // évite de compter 2 fois une mutation multi-lots
+  let years = 0;
+  for(const txt of texts){
+    if(!txt) continue;
+    years++;
+    const rows = parseCsv(txt);
+    if(rows.length < 2) continue;
+    const head = rows[0], col = {};
+    head.forEach((h,i)=> col[h.trim()] = i);
+    const iPar=col["id_parcelle"], iDate=col["date_mutation"], iMut=col["id_mutation"];
+    if(iPar===undefined || iDate===undefined) continue;
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      const id = (row[iPar]||"").trim();
+      if(!id) continue;
+      const ds = (row[iDate]||"").trim();
+      const d  = ds ? new Date(ds) : null;
+      const cur = dvfIndex[id] || {last:null, count:0, records:[], muts:{}};
+      const mut = iMut!==undefined ? row[iMut] : ds;
+      if(mut && !cur.muts[mut]){ cur.muts[mut]=1; cur.count++; }
+      if(d && !isNaN(d) && (!cur.last || d>cur.last)) cur.last = d;
+      const key = id+"|"+mut;
+      if(cur.records.length < 8 && !seenMutations[key]){
+        seenMutations[key] = 1;
+        cur.records.push({
+          date: ds,
+          val:  col["valeur_fonciere"]!==undefined ? row[col["valeur_fonciere"]] : "",
+          type: col["type_local"]!==undefined ? row[col["type_local"]] : "",
+          surf: col["surface_reelle_bati"]!==undefined ? row[col["surface_reelle_bati"]] : "",
+          adr:  [col["adresse_numero"]!==undefined ? row[col["adresse_numero"]] : "",
+                 col["adresse_nom_voie"]!==undefined ? row[col["adresse_nom_voie"]] : ""]
+                .filter(Boolean).join(" ")
+        });
+      }
+      dvfIndex[id] = cur;
+    }
   }
-  if(!ok || !data || !data.features){ setChip("chip-dvf","err","DVF indispo"); return; }
-  for(const f of data.features){
-    const p=f.properties||{};
-    const id=p.id_parcelle || p.parcelle || null;
-    if(!id) continue;
-    const d = p.date_mutation ? new Date(p.date_mutation) : null;
-    const cur = dvfIndex[id] || {last:null,count:0,records:[]};
-    cur.count++;
-    if(d && (!cur.last || d>cur.last)) cur.last=d;
-    if(cur.records.length<6) cur.records.push({
-      date:p.date_mutation, val:p.valeur_fonciere, type:p.type_local,
-      surf:p.surface_reelle_bati, adr:[p.adresse_numero,p.adresse_nom_voie].filter(Boolean).join(" ")
-    });
-    dvfIndex[id]=cur;
+
+  const n = Object.keys(dvfIndex).length;
+  if(!years || !n){ setChip("chip-dvf","err","DVF indispo"); return; }
+  dvfLoadedInsee = insee;
+  setChip("chip-dvf","ok", n+" parc. / "+years+" ans");
+}
+
+/* Parseur CSV tolérant : gère les champs entre guillemets contenant des
+   virgules ou des retours à la ligne (présents dans les libellés de voie). */
+function parseCsv(text){
+  const rows=[]; let row=[], field="", q=false, i=0;
+  while(i < text.length){
+    const c = text[i];
+    if(q){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field+='"'; i+=2; continue; }
+        q=false; i++; continue;
+      }
+      field+=c; i++; continue;
+    }
+    if(c === '"'){ q=true; i++; continue; }
+    if(c === ','){ row.push(field); field=""; i++; continue; }
+    if(c === '\n'){ row.push(field); field=""; rows.push(row); row=[]; i++; continue; }
+    if(c === '\r'){ i++; continue; }
+    field+=c; i++;
   }
-  dvfLoadedInsee=insee;
-  setChip("chip-dvf","ok","DVF "+Object.keys(dvfIndex).length+" parc.");
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
 }
 
 /* =========================================================================
